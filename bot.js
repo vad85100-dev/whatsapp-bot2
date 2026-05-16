@@ -4,18 +4,15 @@ const axios = require('axios');
 const app = express();
 app.use(express.json());
 
-// ========== ТВОИ ДАННЫЕ GREEN API (берутся из переменных окружения Render) ==========
+// ========== ТВОИ ДАННЫЕ ==========
 const ID_INSTANCE = process.env.ID_INSTANCE;
 const API_TOKEN = process.env.API_TOKEN;
 const BOSS = 'P14';
 const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель', 'Галина Дубль'];
 
-// ========== БЕЛЫЙ СПИСОК ГРУПП (бот работает ТОЛЬКО здесь) ==========
-// Укажи названия групп, в которых бот должен работать
+// ========== БЕЛЫЙ СПИСОК ГРУПП ==========
 const ALLOWED_GROUPS = [
-    'тестовая система автоматизации',  // название твоей группы
-    // 'casino',                      // пример другой группы
-    // 'основной лот'                  // пример ещё одной группы
+    'тестовая система автоматизации',
 ];
 
 // ========== БАЗА ДАННЫХ ==========
@@ -70,6 +67,52 @@ async function sendMessage(chatId, text) {
     } catch (err) {
         console.error('❌ Ошибка отправки:', err.message);
     }
+}
+
+// ========== КОПИЛКА ==========
+function savePiggy() {
+    // в реальной базе нужно сохранять, но для простоты оставляем в памяти
+}
+function addGamePlay(playerKey, value) {
+    if (!db[playerKey]) return;
+    if (!db[playerKey].games) db[playerKey].games = 0;
+    if (!db[playerKey].tickets) db[playerKey].tickets = 0;
+    db[playerKey].games += value;
+    const newTickets = Math.floor(db[playerKey].games / 10) - db[playerKey].tickets;
+    if (newTickets > 0) {
+        db[playerKey].tickets += newTickets;
+        sendMessage(chatId, `🎁 *ИГРОК ПОЛУЧИЛ МЕШОЧЕК!*\n━━━━━━━━━━━━━━━━━━\n👤 ${playerKey.split(' (')[0]}\n📊 Сыграно игр: ${db[playerKey].games}\n🎟️ Мешочков: ${db[playerKey].tickets}`);
+    }
+}
+function showPiggy(chatId) {
+    let totalTickets = 0;
+    for (let key in db) if (db[key]?.tickets) totalTickets += db[key].tickets;
+    sendMessage(chatId, `🐷 *КОПИЛКА КАЗИНО* 🐷\n━━━━━━━━━━━━━━━━━━\n💰 Сумма в копилке: *${piggyBank}₽*\n🎟️ Всего мешочков: *${totalTickets}*`);
+}
+function breakPiggy(chatId) {
+    if (dailyPayoutDone) {
+        sendMessage(chatId, `⚠️ *КОПИЛКА УЖЕ РАЗБИТА СЕГОДНЯ*\nСледующая разбивка завтра!`);
+        return;
+    }
+    const participants = [];
+    for (let key in db) if (db[key]?.tickets && db[key].tickets > 0) participants.push({ key, tickets: db[key].tickets });
+    if (participants.length === 0 || piggyBank === 0) {
+        sendMessage(chatId, `❌ *НЕЛЬЗЯ РАЗБИТЬ КОПИЛКУ*\nНет мешочков или копилка пуста!`);
+        return;
+    }
+    const totalTickets = participants.reduce((s, p) => s + p.tickets, 0);
+    const perTicket = piggyBank / totalTickets;
+    let msg = `🐷 *РАЗБИВКА КОПИЛКИ* 🐷\n━━━━━━━━━━━━━━━━━━\n💰 Общая сумма: ${piggyBank}₽\n🎟️ Всего мешочков: ${totalTickets}\n📊 Сумма на 1 мешочек: ${Math.floor(perTicket)}₽\n\n🏆 *ПОЛУЧИЛИ:*\n`;
+    for (const p of participants) {
+        const winnings = Math.floor(perTicket * p.tickets);
+        db[p.key].balance = (db[p.key].balance || 0) + winnings;
+        db[p.key].tickets = 0;
+        msg += `\n${p.key.split(' (')[0]} — ${winnings}₽ (${p.tickets} меш.)`;
+    }
+    piggyBank = 0;
+    dailyPayoutDone = true;
+    msg += `\n\n━━━━━━━━━━━━━━━━━━\n🎉 *ВСЕ ПОЗДРАВЛЯЮТ ПОБЕДИТЕЛЕЙ!* 🎉`;
+    sendMessage(chatId, msg);
 }
 
 // ========== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
@@ -160,7 +203,7 @@ async function handleMessage(chatId, sender, text, groupName) {
     if (!isAdminUser) return;
 
     if (low === '.помощь') {
-        await sendMessage(chatId, `🔥👑 *TITAN CASINO v20.0* 👑🔥
+        await sendMessage(chatId, `🔥👑 *TITAN CASINO* 👑🔥
 ━━━━━━━━━━━━━━━━━━━━━
 📌 *ОСНОВНЫЕ*
 .участники | .поиск | .топ10
@@ -168,7 +211,7 @@ async function handleMessage(chatId, sender, text, groupName) {
 💰 *ФИНАНСЫ*
 .средства [имя] +/-
 
-🎲 *ЛОТ (с половинками)*
+🎲 *ЛОТ*
 .начать [стиль] [число]
 .список | .пауза лот
 .победители [1 2 3]
@@ -177,10 +220,25 @@ async function handleMessage(chatId, sender, text, groupName) {
 .копилка | .разбить
 
 🤖 *УМНЫЙ БОТ*
-.умныйбот + / -
-
-🎮 *ДЛЯ ИГРОКОВ*
-/баланс | /статистика | /гадание | /новости | /шутка | /топ10 | /админы`);
+.умныйбот + | .умныйбот -`);
+        return;
+    }
+    if (low === '.умныйбот +') {
+        smartBot = true;
+        await sendMessage(chatId, '🧠 *УМНЫЙ БОТ ВКЛЮЧЁН*');
+        return;
+    }
+    if (low === '.умныйбот -') {
+        smartBot = false;
+        await sendMessage(chatId, '💤 *УМНЫЙ БОТ ВЫКЛЮЧЁН*');
+        return;
+    }
+    if (low === '.копилка') {
+        await showPiggy(chatId);
+        return;
+    }
+    if (low === '.разбить') {
+        await breakPiggy(chatId);
         return;
     }
     if (low === '.участники') {
@@ -243,9 +301,16 @@ async function handleMessage(chatId, sender, text, groupName) {
         }
         return;
     }
+    
+    // Умный бот (отвечает на обычные сообщения)
+    if (smartBot && !isAdminUser && !low.startsWith('.') && !low.startsWith('/')) {
+        const replies = ['🎲 Удачи!', '🔥 Ставки?', '💰 Фарта!', '🍀 Сегодня твой день!'];
+        await sendMessage(chatId, replies[Math.floor(Math.random() * replies.length)]);
+        return;
+    }
 }
 
-// ========== ВЕБХУК С ПРОВЕРКОЙ ГРУПП ==========
+// ========== ВЕБХУК ==========
 app.post('/webhook', async (req, res) => {
     const webhook = req.body;
     console.log('📩 Получен вебхук:', JSON.stringify(webhook, null, 2));
@@ -255,10 +320,8 @@ app.post('/webhook', async (req, res) => {
     const sender = webhook.senderData?.senderName || webhook.senderData?.sender;
     const text = webhook.messageData?.textMessageData?.textMessage;
 
-    // Проверяем, группа ли это
     const isGroup = chatId && chatId.includes('@g.us');
-    
-    if (isGroup && groupName && !ALLOWED_GROUPS.includes(groupName)) {
+    if (isGroup && groupName && ALLOWED_GROUPS.length > 0 && !ALLOWED_GROUPS.includes(groupName)) {
         console.log(`⛔ Группа "${groupName}" не в белом списке. Игнорируем.`);
         res.status(200).send('OK');
         return;
@@ -277,5 +340,4 @@ app.post('/webhook', async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`✅ Бот запущен на порту ${PORT}`);
-    console.log(`📌 Webhook URL: https://твой-сервер:${PORT}/webhook`);
 });
