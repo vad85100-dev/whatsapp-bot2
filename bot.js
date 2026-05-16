@@ -239,25 +239,95 @@ async function payout(chatId, winners) {
 
 // ========== ОБРАБОТЧИК СООБЩЕНИЙ ==========
 async function handleMessage(chatId, sender, text, groupName) {
-    const rawCmd = text.trim().toLowerCase();
-    let cmd = rawCmd;
-    let args = '';
-    const firstSpace = rawCmd.indexOf(' ');
-    if (firstSpace !== -1) {
-        cmd = rawCmd.substring(0, firstSpace).trim();
-        args = rawCmd.substring(firstSpace + 1).trim();
+    // ========== СТАВКИ ==========
+    if (game.active && !game.paused) {
+        const isBet = /^[\d,\/\\]+$/.test(cmd);
+        if (isBet) {
+            // НАХОДИМ ИГРОКА ПО НОРМАЛИЗОВАННОМУ ИМЕНИ
+            const playerKey = findPlayerKey(sender);
+            if (!playerKey) {
+                await sendMessage(chatId, `❌ *ОШИБКА*\n━━━━━━━━━━━━━━━━━━\nИгрок "${sender}" не найден в базе.\nПополните баланс через админа: .средства ${sender} + сумма`);
+                return;
+            }
+            
+            const bets = cmd.split(',').map(b => b.trim());
+            let totalCost = 0;
+            const validBets = [];
+            const errors = [];
+            const p = prices[game.style];
+            
+            for (const bet of bets) {
+                let num = parseInt(bet);
+                let type = 'full';
+                if (bet.endsWith('/')) { type = 'half'; num = parseInt(bet.slice(0, -1)); }
+                if (bet.endsWith('\\')) { type = 'half'; num = parseInt(bet.slice(0, -1)); }
+                
+                if (isNaN(num) || num < 1 || num > game.max) {
+                    errors.push(`❌ "${bet}" — неверный номер`);
+                    continue;
+                }
+                
+                const need = (type === 'full') ? p.full : p.half;
+                const slot = game.slots[num] || {};
+                
+                if (type === 'full' && (slot.full || slot.left || slot.right)) {
+                    errors.push(`❌ Номер ${num} уже занят`);
+                    continue;
+                }
+                if (type === 'half' && slot.full) {
+                    errors.push(`❌ Номер ${num} уже занят целиком`);
+                    continue;
+                }
+                if (type === 'half' && slot.left && slot.right) {
+                    errors.push(`❌ Номер ${num} полностью занят (обе половинки заняты)`);
+                    continue;
+                }
+                
+                validBets.push({ num, type, need });
+                totalCost += need;
+            }
+            
+            if (errors.length > 0) {
+                await sendMessage(chatId, `❌ *ОШИБКИ В СТАВКАХ*\n━━━━━━━━━━━━━━━━━━\n${errors.join('\n')}`);
+                return;
+            }
+            
+            if (validBets.length === 0) return;
+            
+            const currentBalance = db[playerKey]?.balance || 0;
+            if (currentBalance < totalCost) {
+                await sendMessage(chatId, `❌ *НЕ ХВАТАЕТ ${totalCost}₽*\n━━━━━━━━━━━━━━━━━━\n💰 Ваш баланс: ${currentBalance}₽\n💡 Пополните баланс: .средства ${sender} + сумма`);
+                return;
+            }
+            
+            db[playerKey].balance -= totalCost;
+            
+            for (const bet of validBets) {
+                if (!game.slots[bet.num]) game.slots[bet.num] = {};
+                if (bet.type === 'full') game.slots[bet.num].full = sender;
+                else if (bet.type === 'half') {
+                    if (!game.slots[bet.num].left) game.slots[bet.num].left = sender;
+                    else if (!game.slots[bet.num].right) game.slots[bet.num].right = sender;
+                }
+            }
+            
+            let allFilled = true;
+            for (let i = 1; i <= game.max; i++) {
+                const s = game.slots[i];
+                if (!s || (!s.full && !s.left && !s.right)) { allFilled = false; break; }
+            }
+            if (allFilled) game.paused = true;
+            
+            let successMsg = `✅ *СТАВКИ ПРИНЯТЫ*\n━━━━━━━━━━━━━━━━━━\n`;
+            for (const bet of validBets) {
+                const price = bet.type === 'full' ? p.full : p.half;
+                successMsg += `🎲 Номер ${bet.num}${bet.type === 'half' ? '/' : ''} — ${price}₽\n`;
+            }
+            successMsg += `\n💰 Всего списано: ${totalCost}₽\n━━━━━━━━━━━━━━━━━━\n\n${renderLot()}`;
+            await sendMessage(chatId, successMsg);
+            return;
+        }
     }
-    
-    // Нормализуем имя отправителя для поиска в базе
-    const playerKey = ensurePlayer(sender);
-    const isAdminUser = isAdmin(sender);
-    const isBoss = sender === BOSS;
-    
-    // Список существующих команд
-    const validCommands = [
-        '/бот', '/баланс', '/статистика', '/гадание', '/новости', '/шутка', '/топ10', '/админы', '/банк',
-        '.помощь', '.участники', '.топ10', '.копилка', '.разбить', '.умныйбот +', '.умныйбот -',
-        '.начать', '.список', '.пауза лот', '.победители', '.средства', '.поиск', '.удалить'
     ];
     
     // ========== ПУБЛИЧНЫЕ КОМАНДЫ ==========
