@@ -136,7 +136,7 @@ function addGamePlay(playerKey, value) {
 function showPiggy(chatId) {
     let totalTickets = 0;
     for (let key in db) if (db[key]?.tickets) totalTickets += db[key].tickets;
-    sendMessage(chatId, `🐷 *КОПИЛКА КАЗИНО* 🐷\n━━━━━━━━━━━━━━━━━━\n💰 Сумма в копилке: *${piggyBank}₽*\n🎟️ Всего мешочков: *${totalTickets}*`);
+    sendMessage(chatId, `🐷 *КОПИЛКА СВИНКА* 🐷\n━━━━━━━━━━━━━━━━━━\n💰 Сумма в копилке: *${piggyBank}₽*\n🎟️ Всего мешочков: *${totalTickets}*`);
 }
 
 function breakPiggy(chatId) {
@@ -385,7 +385,7 @@ const playerKey = findPlayerKey(sender, phone);
             }
             
             if (errors.length > 0) {
-                await sendMessage(chatId, `❌ *ОШИБКИ В СТАВКАХ*\n━━━━━━━━━━━━━━━━━━\n${errors.join('\n')}`);
+                await sendMessage(chatId, `❌ *ОШИБКИ В НОМЕРКАХ*\n━━━━━━━━━━━━━━━━━━\n${errors.join('\n')}`);
                 return;
             }
             
@@ -415,7 +415,7 @@ const playerKey = findPlayerKey(sender, phone);
             }
             if (allFilled) game.paused = true;
             
-            let successMsg = `✅ *СТАВКИ ПРИНЯТЫ*\n━━━━━━━━━━━━━━━━━━\n`;
+            let successMsg = `✅ *НОМЕРОК ПРИНЯТ*\n━━━━━━━━━━━━━━━━━━\n`;
             for (const bet of validBets) {
                 const price = bet.type === 'full' ? p.full : p.half;
                 successMsg += `🎲 Номер ${bet.num}${bet.type === 'half' ? '/' : ''} — ${price}₽\n`;
@@ -435,7 +435,7 @@ const playerKey = findPlayerKey(sender, phone);
     }
     
     if (cmd === '.помощь') {
-        await sendMessage(chatId, `🔥👑 *TITAN CASINO* 👑🔥\n━━━━━━━━━━━━━━━━━━━━━
+        await sendMessage(chatId, `🔥👑 *𝑺𝒕𝒂𝒇𝒇 𝑷𝒂𝒏𝒆𝒍* 👑🔥\n━━━━━━━━━━━━━━━━━━━━━
 📌 *ОСНОВНЫЕ*
 .участники — список игроков
 .поиск [имя] — найти игрока
