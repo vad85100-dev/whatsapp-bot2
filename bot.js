@@ -4,11 +4,19 @@ const axios = require('axios');
 const app = express();
 app.use(express.json());
 
-// ========== ТВОИ ДАННЫЕ GREEN API ==========
+// ========== ТВОИ ДАННЫЕ GREEN API (берутся из переменных окружения Render) ==========
 const ID_INSTANCE = process.env.ID_INSTANCE;
 const API_TOKEN = process.env.API_TOKEN;
 const BOSS = 'P14';
 const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель', 'Галина Дубль'];
+
+// ========== БЕЛЫЙ СПИСОК ГРУПП (бот работает ТОЛЬКО здесь) ==========
+// Укажи названия групп, в которых бот должен работать
+const ALLOWED_GROUPS = [
+    'тестовая система автоматизации',  // название твоей группы
+    // 'casino',                      // пример другой группы
+    // 'основной лот'                  // пример ещё одной группы
+];
 
 // ========== БАЗА ДАННЫХ ==========
 let db = {};
@@ -102,7 +110,7 @@ function renderLot() {
 }
 
 // ========== ОБРАБОТЧИК СООБЩЕНИЙ ==========
-async function handleMessage(chatId, sender, text) {
+async function handleMessage(chatId, sender, text, groupName) {
     const low = text.toLowerCase();
     const playerKey = ensurePlayer(sender);
     const isAdminUser = isAdmin(sender);
@@ -237,19 +245,28 @@ async function handleMessage(chatId, sender, text) {
     }
 }
 
-// ========== ВЕБХУК ==========
+// ========== ВЕБХУК С ПРОВЕРКОЙ ГРУПП ==========
 app.post('/webhook', async (req, res) => {
     const webhook = req.body;
     console.log('📩 Получен вебхук:', JSON.stringify(webhook, null, 2));
 
-    // Принимаем оба типа: и incoming, и outgoing
-    if (webhook.typeWebhook === 'incomingMessageReceived' || webhook.typeWebhook === 'outgoingMessageReceived') {
-        const chatId = webhook.senderData?.chatId;
-        const sender = webhook.senderData?.senderName || webhook.senderData?.sender;
-        const text = webhook.messageData?.textMessageData?.textMessage;
+    const groupName = webhook.senderData?.chatName || '';
+    const chatId = webhook.senderData?.chatId;
+    const sender = webhook.senderData?.senderName || webhook.senderData?.sender;
+    const text = webhook.messageData?.textMessageData?.textMessage;
 
+    // Проверяем, группа ли это
+    const isGroup = chatId && chatId.includes('@g.us');
+    
+    if (isGroup && groupName && !ALLOWED_GROUPS.includes(groupName)) {
+        console.log(`⛔ Группа "${groupName}" не в белом списке. Игнорируем.`);
+        res.status(200).send('OK');
+        return;
+    }
+
+    if (webhook.typeWebhook === 'incomingMessageReceived' || webhook.typeWebhook === 'outgoingMessageReceived') {
         if (chatId && text) {
-            await handleMessage(chatId, sender || chatId.split('@')[0], text);
+            await handleMessage(chatId, sender || chatId.split('@')[0], text, groupName);
         }
     }
 
