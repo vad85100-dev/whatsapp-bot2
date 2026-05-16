@@ -242,7 +242,8 @@ app.post('/webhook', async (req, res) => {
     const webhook = req.body;
     console.log('📩 Получен вебхук:', JSON.stringify(webhook, null, 2));
 
-    if (webhook.typeWebhook === 'incomingMessageReceived') {
+    // Принимаем оба типа: и incoming, и outgoing
+    if (webhook.typeWebhook === 'incomingMessageReceived' || webhook.typeWebhook === 'outgoingMessageReceived') {
         const chatId = webhook.senderData?.chatId;
         const sender = webhook.senderData?.senderName || webhook.senderData?.sender;
         const text = webhook.messageData?.textMessageData?.textMessage;
