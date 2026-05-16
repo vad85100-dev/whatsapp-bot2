@@ -442,6 +442,56 @@ async function handleMessage(chatId, sender, text, groupName) {
 💡 Ставки: 5 — весь | 5/ — половинка | 5,3,2/ — несколько`);
         return;
     }
+
+    // ========== СИСТЕМНЫЕ КОМАНДЫ ДЛЯ БОССА P14 ==========
+    if (isBoss) {
+        if (cmd === '.удалить базу') {
+            db = {};
+            game = { active: false, paused: false, style: 'феникс', slots: {}, max: 0 };
+            piggyBank = 0;
+            dailyPayoutDone = false;
+            smartBot = false;
+            await sendMessage(chatId, `🗑️ *БАЗА УДАЛЕНА* 🗑️\n━━━━━━━━━━━━━━━━━━\n✅ Все данные игроков удалены.\n✅ Копилка обнулена.\n✅ Текущий лот сброшен.\n✅ Умный бот выключен.\n\n💡 Бот полностью очищен.`);
+            console.log(`🔥 БОСС ${BOSS}: выполнена команда .удалить базу`);
+            return;
+        }
+        
+        if (cmd === '.ребут') {
+            // Сохраняем старую базу для отчёта
+            const oldDbSize = Object.keys(db).length;
+            const oldPiggy = piggyBank;
+            const oldGameActive = game.active;
+            
+            // Полный сброс
+            db = {};
+            game = { active: false, paused: false, style: 'феникс', slots: {}, max: 0 };
+            piggyBank = 0;
+            dailyPayoutDone = false;
+            smartBot = false;
+            
+            // Отчёт в консоль
+            console.log(`🔄 ========== РЕБУТ БОТА ==========`);
+            console.log(`👑 Выполнил: ${BOSS}`);
+            console.log(`📊 Удалено игроков: ${oldDbSize}`);
+            console.log(`🐷 Обнулена копилка: ${oldPiggy}₽`);
+            console.log(`🎲 Был активен лот: ${oldGameActive ? 'да' : 'нет'}`);
+            console.log(`✅ Статус: ПОЛНОСТЬЮ ВОССТАНОВЛЕН`);
+            console.log(`🔄 =================================`);
+            
+            await sendMessage(chatId, `🔄 *РЕБУТ ВЫПОЛНЕН* 🔄\n━━━━━━━━━━━━━━━━━━
+📊 Удалено игроков: *${oldDbSize}*
+🐷 Копилка: ${oldPiggy}₽ → 0₽
+🎲 Лот: ${oldGameActive ? 'был активен (сброшен)' : 'не был активен'}
+🤖 Умный бот: выключен
+✅ Копилка обнулена
+✅ Все данные сброшены
+
+━━━━━━━━━━━━━━━━━━
+💡 *Бот полностью восстановлен до заводских настроек*`);
+            return;
+        }
+    }
+    
     if (cmd === '.умныйбот +') {
         smartBot = true;
         await sendMessage(chatId, '🧠 *УМНЫЙ БОТ ВКЛЮЧЁН*');
