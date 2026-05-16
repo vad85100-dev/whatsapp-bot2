@@ -9,6 +9,12 @@ const ID_INSTANCE = process.env.ID_INSTANCE;
 const API_TOKEN = process.env.API_TOKEN;
 const BOSS = 'P14';
 const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель', 'Галина Дубль'];
+// Получение номера телефона из чата
+function extractPhone(chatId) {
+    if (!chatId) return null;
+    const match = chatId.match(/(\d+)@/);
+    return match ? match[1] : null;
+}
 
 // ========== БЕЛЫЙ СПИСОК ГРУПП ==========
 const ALLOWED_GROUPS = [
@@ -79,7 +85,13 @@ function normalizeName(name) {
     return name.toLowerCase().replace(/[~@_]/g, '').trim();
 }
 
-function findPlayerKey(name) {
+function findPlayerKey(name, phone) {
+    // Сначала ищем по номеру телефона
+    if (phone) {
+        const byPhone = Object.keys(db).find(key => db[key]?.phone === phone);
+        if (byPhone) return byPhone;
+    }
+    // Если не нашли по номеру, ищем по имени (старый способ)
     const normalized = normalizeName(name);
     return Object.keys(db).find(key => {
         const keyName = normalizeName(key.split(' (')[0]);
@@ -87,11 +99,21 @@ function findPlayerKey(name) {
     });
 }
 
-function ensurePlayer(name) {
-    let key = findPlayerKey(name);
+function ensurePlayer(name, phone) {
+    let key = findPlayerKey(name, phone);
     if (!key) {
-        key = `${name} (auto)`;
-        db[key] = { balance: 0, games: 0, tickets: 0, wins: 0 };
+        key = `${name} (${phone || 'no-phone'})`;
+        db[key] = { 
+            balance: 0, 
+            games: 0, 
+            tickets: 0, 
+            wins: 0,
+            phone: phone || null,
+            rawName: name
+        };
+    } else if (phone && !db[key].phone) {
+        // Обновляем номер телефона, если его не было
+        db[key].phone = phone;
     }
     return key;
 }
@@ -249,7 +271,8 @@ async function handleMessage(chatId, sender, text, groupName) {
     }
     
     // Нормализуем имя отправителя для поиска в базе
-    const playerKey = ensurePlayer(sender);
+   const phone = extractPhone(chatId);
+const playerKey = ensurePlayer(sender, phone);
     const isAdminUser = isAdmin(sender);
     const isBoss = sender === BOSS;
     
@@ -317,7 +340,8 @@ async function handleMessage(chatId, sender, text, groupName) {
         const isBet = /^[\d,\/\\]+$/.test(cmd);
         if (isBet) {
             // НАХОДИМ ИГРОКА ПО НОРМАЛИЗОВАННОМУ ИМЕНИ
-            const playerKey = findPlayerKey(sender);
+const phone = extractPhone(chatId);
+const playerKey = findPlayerKey(sender, phone);
             if (!playerKey) {
                 await sendMessage(chatId, `❌ *ОШИБКА*\n━━━━━━━━━━━━━━━━━━\nИгрок "${sender}" не найден в базе.\nПополните баланс через админа: .средства ${sender} + сумма`);
                 return;
@@ -548,7 +572,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         if (isNaN(val)) { await sendMessage(chatId, '❌ Сумма не число'); return; }
         
         // Ищем по нормализованному имени
-        let key = findPlayerKey(name);
+let key = findPlayerKey(name, null);
         if (!key) {
             key = `${name} (manual)`;
             db[key] = { balance: 0, games: 0, tickets: 0, wins: 0 };
