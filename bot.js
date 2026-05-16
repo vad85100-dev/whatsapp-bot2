@@ -5,8 +5,8 @@ const app = express();
 app.use(express.json());
 
 // ========== ТВОИ ДАННЫЕ GREEN API ==========
-const ID_INSTANCE = '1105622014';     // твой idInstance
-const API_TOKEN = 'c61846691e48407a9748b960eface8501d56bc9f0ab746eaba'; // твой apiTokenInstance
+const ID_INSTANCE = process.env.ID_INSTANCE;
+const API_TOKEN = process.env.API_TOKEN;
 const BOSS = 'P14';
 const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель', 'Галина Дубль'];
 
