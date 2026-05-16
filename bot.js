@@ -551,7 +551,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         await sendMessage(chatId, out);
         return;
     }
-    if (cmd === '.средства' && args) {
+      if (cmd === '.средства' && args) {
         const op = args.includes('+') ? '+' : (args.includes('-') ? '-' : null);
         if (!op) return;
         const parts = args.split(op);
@@ -559,6 +559,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         let val = parseInt(parts[1]);
         if (isNaN(val)) { await sendMessage(chatId, '❌ Сумма не число'); return; }
         
+        // Ищем по нормализованному имени
         let key = findPlayerKey(name);
         if (!key) {
             key = `${name} (manual)`;
@@ -566,7 +567,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         }
         const old = db[key].balance || 0;
         db[key].balance = op === '+' ? old + val : old - val;
-        await sendMessage(chatId, `${op === '+' ? '🟢 НАЧИСЛЕНО' : '🔴 СПИСАНО'} ${name}: ${old} → ${db[key].balance}₽`);
+        await sendMessage(chatId, `${op === '+' ? '🟢 НАЧИСЛЕНО' : '🔴 СПИСАНО'} ${key.split(' (')[0]}: ${old} → ${db[key].balance}₽`);
         return;
     }
     if (cmd === '.удалить' && args && isAdminUser) {
