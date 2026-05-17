@@ -345,20 +345,26 @@ async function handleMessage(chatId, sender, text, groupName) {
         await sendMessage(chatId, `🤖 *МЕНЮ ИГРОКА*\n━━━━━━━━━━━━━━━━━━\n/баланс 💰\n/статистика 📊\n/банк 🏦\n/гадание 🔮\n/новости 📰\n/шутка 😂\n/топ10 🏆\n/админы 👑`);
         return;
     }
-    if (cmd === '/баланс') {
-        const balanceKey = getPlayerKey(sender, phone);
+        if (cmd === '/баланс') {
+        // Сначала ищем по телефону (самый надёжный способ)
+        let balanceKey = null;
+        if (phone) {
+            balanceKey = getPlayerKeyByPhone(phone);
+        }
+        // Если по телефону не нашли, создаём нового игрока с этим телефоном
         if (!balanceKey) {
-            await sendMessage(chatId, `❌ Вы не найдены в базе. Напишите любую команду для регистрации.`);
-            return;
+            balanceKey = ensurePlayer(sender, phone);
         }
         await sendMessage(chatId, `💰 *БАЛАНС*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(balanceKey)}\n💎 ${db[balanceKey]?.balance || 0}₽`);
         return;
     }
-    if (cmd === '/статистика') {
-        const statsKey = getPlayerKey(sender, phone);
+       if (cmd === '/статистика') {
+        let statsKey = null;
+        if (phone) {
+            statsKey = getPlayerKeyByPhone(phone);
+        }
         if (!statsKey) {
-            await sendMessage(chatId, `❌ Вы не найдены в базе. Напишите любую команду для регистрации.`);
-            return;
+            statsKey = ensurePlayer(sender, phone);
         }
         const g = db[statsKey]?.games || 0;
         const t = db[statsKey]?.tickets || 0;
