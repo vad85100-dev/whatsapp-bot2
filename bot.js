@@ -97,15 +97,14 @@ function getPlayerKeyByName(name) {
 }
 
 function getPlayerKey(sender, phone) {
-    // Сначала ищем по телефону
+    // Сначала ищем по телефону (самый надёжный способ)
     if (phone) {
         const byPhone = getPlayerKeyByPhone(phone);
         if (byPhone) return byPhone;
     }
-    // Потом по имени
+    // Если телефона нет или не нашли, ищем по имени
     return getPlayerKeyByName(sender);
 }
-
 function ensurePlayer(sender, phone) {
     let key = getPlayerKey(sender, phone);
     if (!key) {
@@ -403,11 +402,83 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
     
-    // ===== СТАВКИ =====
+        // ===== СТАВКИ =====
     if (game.active && !game.paused && /^[\d,\/\\]+$/.test(cmd)) {
+        // Принудительно создаём/находим игрока по телефону
         const betKey = getPlayerKey(sender, phone);
         if (!betKey) {
-            await sendMessage(chatId, `❌ Игрок не найден в базе. Напишите /баланс для регистрации.`);
+            // Создаём через ensurePlayer, чтобы точно был в базе
+            const newKey = ensurePlayer(sender, phone);
+            if (!newKey) {
+                await sendMessage(chatId, `❌ Игрок не найден в базе. Напишите /баланс для регистрации.`);
+                return;
+            }
+            // Используем новый ключ
+            const bets = cmd.split(',').map(b => b.trim());
+            let totalCost = 0;
+            const validBets = [];
+            const errors = [];
+            const p = prices[game.style];
+            
+            for (const bet of bets) {
+                let num = parseInt(bet);
+                let type = 'full';
+                if (bet.endsWith('/')) { type = 'half'; num = parseInt(bet.slice(0,-1)); }
+                if (bet.endsWith('\\')) { type = 'half'; num = parseInt(bet.slice(0,-1)); }
+                if (isNaN(num) || num < 1 || num > game.max) {
+                    errors.push(`❌ "${bet}" неверный номер`);
+                    continue;
+                }
+                const need = type === 'full' ? p.full : p.half;
+                const slot = game.slots[num] || {};
+                if (type === 'full' && (slot.full || slot.left || slot.right)) {
+                    errors.push(`❌ Номер ${num} уже занят`);
+                    continue;
+                }
+                if (type === 'half' && slot.full) {
+                    errors.push(`❌ Номер ${num} уже занят целиком`);
+                    continue;
+                }
+                if (type === 'half' && slot.left && slot.right) {
+                    errors.push(`❌ Номер ${num} полностью занят`);
+                    continue;
+                }
+                validBets.push({ num, type, need });
+                totalCost += need;
+            }
+            
+            if (errors.length) {
+                await sendMessage(chatId, `❌ *ОШИБКИ*\n${errors.join('\n')}`);
+                return;
+            }
+            
+            const currentBalance = db[newKey]?.balance || 0;
+            const newBalance = currentBalance - totalCost;
+            db[newKey].balance = newBalance;
+            
+            for (const bet of validBets) {
+                if (!game.slots[bet.num]) game.slots[bet.num] = {};
+                if (bet.type === 'full') game.slots[bet.num].full = sender;
+                else if (bet.type === 'half') {
+                    if (!game.slots[bet.num].left) game.slots[bet.num].left = sender;
+                    else if (!game.slots[bet.num].right) game.slots[bet.num].right = sender;
+                }
+            }
+            
+            let allFilled = true;
+            for (let i = 1; i <= game.max; i++) {
+                const s = game.slots[i];
+                if (!s || (!s.full && !s.left && !s.right)) { allFilled = false; break; }
+            }
+            if (allFilled) game.paused = true;
+            
+            let success = `✅ *СТАВКИ ПРИНЯТЫ*\n━━━━━━━━━━━━━━━━━━\n`;
+            for (const bet of validBets) {
+                const price = bet.type === 'full' ? p.full : p.half;
+                success += `🎲 Номер ${bet.num}${bet.type === 'half' ? '/' : ''} — ${price}₽\n`;
+            }
+            success += `\n💰 Списано: ${totalCost}₽\n💰 Новый баланс: ${db[newKey].balance}₽\n\n${renderLot()}`;
+            await sendMessage(chatId, success);
             return;
         }
         
@@ -451,8 +522,6 @@ async function handleMessage(chatId, sender, text, groupName) {
         
         const currentBalance = db[betKey]?.balance || 0;
         const newBalance = currentBalance - totalCost;
-        
-        // Лимит отключён для всех
         db[betKey].balance = newBalance;
         
         for (const bet of validBets) {
