@@ -7,7 +7,7 @@ app.use(express.json());
 const ID_INSTANCE = process.env.ID_INSTANCE;
 const API_TOKEN = process.env.API_TOKEN;
 const BOSS = 'P14';
-const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель 🧿', 'Галина Дубль','Мама'];
+const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель 🧿', 'Галина Дубль'];
 
 const ALLOWED_GROUPS = ['тестовая система автоматизации', 'Колесо Фортуны, резерв'];
 
@@ -58,17 +58,16 @@ const jokes = [
     '😂 Почему игроки не любят лес? — Там много *логов*!',
     '🤣 Лот — это лотерея для оптимистов с кредиткой!',
     '😎 Админ: *Ставки сделаны?* Игрок: *Да, на победу!*',
-    '🔥 Феникс сгорел... в лоте! Но возродился с деньгами!'
+    '🔥 Феникс сгорел... в лоте! Но возродился с деньгами!',
+    'Пусть ваша жизнь всегда будет такой, как в ваших постах в инстаграме... — *Софи Кинселла*',
+    'Жизнь слишком коротка, чтобы тратить ее на диеты, жадных мужчин и плохое настроение. — *Фаина Раневская*',
+    'В этой жизни нужно попробовать практически все, но никогда не нужно ничем увлекаться, только в этом и есть истинная свобода',
+    'Когда все правы - это жуть. Все друг друга пожирают глазами, стараясь отыскать в другом хотя бы тень вины.',
+    '9 из 10 голосов в моей голове говорят, что я сошла с ума. Десятый голос напевает.',
+    
 ];
 const horos = ['♈ Овен: 3,7,11', '♌ Лев: 7,14,20', '♓ Рыбы: 9,13,16', '♊ Близнецы: 1,5,9'];
-const facts = ['🎲 Сегодня чаще выпадают нечётные', '🔥 70% игроков ставят на 7 и 8', '💰 Джекпот недели — 25 000₽'];
-
-function normalizeName(name) {
-    if (!name) return '';
-    // Убираем тильду в начале и эмодзи, НО НЕ УДАЛЯЕМ ЦИФРЫ
-    return name.toLowerCase().replace(/^~/, '').replace(/[^a-zа-яё0-9]/g, '').trim();
-}
-
+const facts = ['🎲 Сегодня чаще выпадают нечётные', '🔥 70% игроков ставят на 7 и 8', '💰 Джекпот недели — 25 000₽','Кажется! админы вас любят','Напомните моей маме, возможно я забыл выключить утюг?','Кстати говоря, недавно животные покорили мир!'];
 
 async function sendMessage(chatId, text) {
     try {
@@ -82,14 +81,21 @@ async function sendMessage(chatId, text) {
     }
 }
 
+function normalizeName(name) {
+    if (!name) return '';
+    // Убираем тильду в начале и эмодзи, НО НЕ УДАЛЯЕМ ЦИФРЫ
+    return name.toLowerCase().replace(/^~/, '').replace(/[^a-zа-яё0-9]/g, '').trim();
+}
+
 function getPlayerKey(name) {
     if (!name) return null;
-    const searchName = name.trim();
+    const normalizedSearch = normalizeName(name);
+    if (!normalizedSearch) return null;
     
-    // Ищем точное совпадение (с учётом эмодзи, но без учёта регистра)
     return Object.keys(db).find(key => {
         const keyName = key.split(' (')[0];
-        return keyName.toLowerCase() === searchName.toLowerCase();
+        const normalizedKey = normalizeName(keyName);
+        return normalizedKey === normalizedSearch;
     });
 }
 
@@ -97,18 +103,6 @@ function getDisplayName(playerKey) {
     if (!playerKey) return 'Неизвестно';
     return playerKey.split(' (')[0];
 }
-
-function ensurePlayer(name) {
-    let key = getPlayerKey(name);
-    if (!key) {
-        // Сохраняем ОРИГИНАЛЬНОЕ имя (как пришло от WhatsApp)
-        key = `${name} (auto)`;
-        db[key] = { balance: 0, games: 0, tickets: 0, wins: 0 };
-    }
-    return key;
-}
-
-
 
 function isAdmin(sender) {
     if (sender === BOSS) return true;
@@ -291,7 +285,6 @@ async function generateReport(chatId) {
     let totalBalance = 0;
     for (let key in db) totalBalance += db[key].balance || 0;
     
-    // Защита от undefined
     const adminLots = stats.adminLots || {};
     let adminStats = '';
     for (let [admin, count] of Object.entries(adminLots)) {
@@ -322,7 +315,6 @@ async function generateReport(chatId) {
     };
 }
 
-// ========== НОВЫЕ КОМАНДЫ: ЭКСПОРТ И ИМПОРТ ==========
 async function exportData(chatId) {
     const exportObj = {
         version: '1.0',
@@ -378,36 +370,52 @@ async function handleMessage(chatId, sender, text, groupName) {
     }
     
     const isAdminUser = isAdmin(sender);
-
     const playerExists = getPlayerKey(sender) !== null;
     
-    // Авто-приветствие для незарегистрированных игроков (не на команды)
+    // ===== ПРОВЕРКА РЕГИСТРАЦИИ ДЛЯ ПУБЛИЧНЫХ КОМАНД =====
+    if (!playerExists && cmd.startsWith('/') && cmd !== '/регистрация') {
+        await sendMessage(chatId, `❌ *ДОСТУП ЗАПРЕЩЁН* ❌
+━━━━━━━━━━━━━━━━━━
+👤 ${sender}, вы не зарегистрированы в системе казино.
+
+✅ Для регистрации напишите:
+/регистрация
+
+После регистрации вам станут доступны все команды:
+/баланс, /статистика, /гадание и другие.
+
+💡 Регистрация бесплатна!`);
+        return;
+    }
+    
+    // Если игрок не зарегистрирован и пишет обычное сообщение (не команду)
     if (!playerExists && !cmd.startsWith('/') && !cmd.startsWith('.') && cmd.length > 1) {
         await sendMessage(chatId, `👋 *Здравствуйте, ${sender}!* 👋
 ━━━━━━━━━━━━━━━━━━
-Вы не зарегистрированы в системе для игры.
+Вы не зарегистрированы в системе казино.
 
-Для регистрации напишите:
+✅ Для регистрации напишите:
 /регистрация
 
-После регистрации ваш баланс будет 0₽.
-💡 Для пополнения обратитесь к админу.`);
+После регистрации вам станут доступны:
+💰 /баланс — узнать баланс
+📊 /статистика — свою статистику
+🔮 /гадание — счастливые числа
+📰 /новости — свежие факты
+😂 /шутка — поднять настроение
+🏆 /топ10 — богатейшие игроки
+
+💡 Регистрация бесплатна!`);
         return;
     }
     
-    // ===== ПУБЛИЧНЫЕ КОМАНДЫ =====
-    if (cmd === '/бот') {
-        await sendMessage(chatId, `🤖 *МЕНЮ ИГРОКА*\n━━━━━━━━━━━━━━━━━━\n/баланс 💰\n/статистика 📊\n/банк 🏦\n/гадание 🔮\n/новости 📰\n/шутка 😂\n/топ10 🏆\n/админы 👑`);
-        return;
-    }
-
+    // ===== РЕГИСТРАЦИЯ =====
     if (cmd === '/регистрация') {
         const existingKey = getPlayerKey(sender);
         if (existingKey) {
             await sendMessage(chatId, `✅ *ВЫ УЖЕ ЗАРЕГИСТРИРОВАНЫ*\n━━━━━━━━━━━━━━━━━━\n👤 ${sender}\n💰 Баланс: ${db[existingKey]?.balance || 0}₽`);
             return;
         }
-        // Регистрируем нового игрока
         const newKey = `${sender} (auto)`;
         db[newKey] = { balance: 0, games: 0, tickets: 0, wins: 0 };
         await sendMessage(chatId, `✅ *РЕГИСТРАЦИЯ ПРОШЛА УСПЕШНО!* ✅
@@ -420,6 +428,11 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
     
+    // ===== ПУБЛИЧНЫЕ КОМАНДЫ =====
+    if (cmd === '/бот') {
+        await sendMessage(chatId, `🤖 *МЕНЮ ИГРОКА*\n━━━━━━━━━━━━━━━━━━\n/баланс 💰\n/статистика 📊\n/банк 🏦\n/гадание 🔮\n/новости 📰\n/шутка 😂\n/топ10 🏆\n/админы 👑`);
+        return;
+    }
     if (cmd === '/баланс') {
         const playerKey = getPlayerKey(sender);
         if (!playerKey) {
@@ -563,7 +576,7 @@ async function handleMessage(chatId, sender, text, groupName) {
     
     // ===== АДМИН-КОМАНДЫ =====
     if (!isAdminUser) {
-        if (cmd.startsWith('/') && !['/бот','/баланс','/статистика','/банк','/гадание','/новости','/шутка','/топ10','/админы'].includes(cmd)) {
+        if (cmd.startsWith('/') && !['/бот','/баланс','/статистика','/банк','/гадание','/новости','/шутка','/топ10','/админы','/регистрация'].includes(cmd)) {
             await sendMessage(chatId, `❌ *НЕТ КОМАНДЫ*\n💡 Введи /бот`);
         }
         return;
@@ -604,7 +617,6 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
     
-    // ===== НОВЫЕ КОМАНДЫ =====
     if (cmd === '.экспорт') {
         await exportData(chatId);
         return;
@@ -747,11 +759,10 @@ async function handleMessage(chatId, sender, text, groupName) {
         }
         return;
     }
-     if (cmd === '.победители' && args && game.paused) {
+    if (cmd === '.победители' && args && game.paused) {
         const wins = args.match(/\d+/g);
         if (wins && wins.length) {
             // Разрешаем повторы номеров (один игрок может выиграть несколько мест)
-            // Проверяем только, что все номера есть в лоте (кто-то их занял)
             const missing = wins.filter(n => !game.slots[n] || (!game.slots[n].full && !game.slots[n].left && !game.slots[n].right));
             if (missing.length > 0) {
                 await sendMessage(chatId, `❌ *ОШИБКА*: номера ${missing.join(', ')} не имеют ставок!`);
