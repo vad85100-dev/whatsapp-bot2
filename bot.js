@@ -378,12 +378,48 @@ async function handleMessage(chatId, sender, text, groupName) {
     }
     
     const isAdminUser = isAdmin(sender);
+
+    const playerExists = getPlayerKey(sender) !== null;
+    
+    // Авто-приветствие для незарегистрированных игроков (не на команды)
+    if (!playerExists && !cmd.startsWith('/') && !cmd.startsWith('.') && cmd.length > 1) {
+        await sendMessage(chatId, `👋 *Здравствуйте, ${sender}!* 👋
+━━━━━━━━━━━━━━━━━━
+Вы не зарегистрированы в системе для игры.
+
+Для регистрации напишите:
+/регистрация
+
+После регистрации ваш баланс будет 0₽.
+💡 Для пополнения обратитесь к админу.`);
+        return;
+    }
     
     // ===== ПУБЛИЧНЫЕ КОМАНДЫ =====
     if (cmd === '/бот') {
         await sendMessage(chatId, `🤖 *МЕНЮ ИГРОКА*\n━━━━━━━━━━━━━━━━━━\n/баланс 💰\n/статистика 📊\n/банк 🏦\n/гадание 🔮\n/новости 📰\n/шутка 😂\n/топ10 🏆\n/админы 👑`);
         return;
     }
+
+    if (cmd === '/регистрация') {
+        const existingKey = getPlayerKey(sender);
+        if (existingKey) {
+            await sendMessage(chatId, `✅ *ВЫ УЖЕ ЗАРЕГИСТРИРОВАНЫ*\n━━━━━━━━━━━━━━━━━━\n👤 ${sender}\n💰 Баланс: ${db[existingKey]?.balance || 0}₽`);
+            return;
+        }
+        // Регистрируем нового игрока
+        const newKey = `${sender} (auto)`;
+        db[newKey] = { balance: 0, games: 0, tickets: 0, wins: 0 };
+        await sendMessage(chatId, `✅ *РЕГИСТРАЦИЯ ПРОШЛА УСПЕШНО!* ✅
+━━━━━━━━━━━━━━━━━━
+👤 *Игрок:* ${sender}
+💰 *Баланс:* 0₽
+
+💡 Для пополнения баланса обратитесь к админу.
+🎮 Доступные команды: /бот`);
+        return;
+    }
+    
     if (cmd === '/баланс') {
         const playerKey = getPlayerKey(sender);
         if (!playerKey) {
