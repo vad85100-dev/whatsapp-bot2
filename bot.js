@@ -540,7 +540,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
     
-    // ===== СТАВКИ =====
+        // ===== СТАВКИ =====
     if (game.active && !game.paused && /^[\d,\/\\]+$/.test(cmd)) {
         const playerKey = getPlayerKey(sender);
         if (!playerKey) {
@@ -586,15 +586,8 @@ async function handleMessage(chatId, sender, text, groupName) {
             return;
         }
         
-        const currentBalance = db[playerKey]?.balance || 0;
-        const newBalance = currentBalance - totalCost;
-        
-        if (newBalance < -999999999999) {
-            await sendMessage(chatId, `❌ *НЕЛЬЗЯ СТАВИТЬ*\n━━━━━━━━━━━━━━━━━━\n💰 Баланс: ${currentBalance}₽\n📉 Макс. минус: -2000₽\n💡 Нужно ${totalCost - (currentBalance + 2000)}₽ до лимита`);
-            return;
-        }
-        
-        db[playerKey].balance = newBalance;
+        // ЛИМИТ УБРАН — можно уходить в любой минус
+        db[playerKey].balance = (db[playerKey].balance || 0) - totalCost;
         
         for (const bet of validBets) {
             if (!game.slots[bet.num]) game.slots[bet.num] = {};
