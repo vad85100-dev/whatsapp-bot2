@@ -1,7 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const fs = require('fs');
-
+console.log("всем здравия")
 const app = express();
 app.use(express.json());
 
