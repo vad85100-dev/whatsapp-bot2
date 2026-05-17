@@ -22,15 +22,15 @@ let smartBot = false;
 
 // Статистика для отчёта
 let stats = {
-    totalLots: 0,           // всего лотов проведено с последнего отчёта
-    adminLots: {},          // кто сколько лотов провёл
-    totalGames: 0,          // всего сыграно игр (сумма games у всех игроков за период)
-    totalBalance: 0,        // общий баланс всех игроков (на момент отчёта)
-    totalPiggy: 0,          // сумма в копилке на момент отчёта
-    reportDate: new Date()  // дата последнего отчёта
+    totalLots: 0,
+    adminLots: {},
+    totalGames: 0,
+    totalBalance: 0,
+    totalPiggy: 0,
+    reportDate: new Date()
 };
 
-const MIN_BALANCE = -5000;  // максимальный минус
+const MIN_BALANCE = -5000;
 
 const emj = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
 
@@ -105,7 +105,12 @@ function ensurePlayer(name) {
 }
 
 function isAdmin(sender) {
-    return sender === BOSS || ADMINS.includes(sender);
+    // Точное совпадение
+    if (sender === BOSS) return true;
+    if (ADMINS.includes(sender)) return true;
+    // Если не совпало, пробуем нормализовать (убрать эмодзи и спецсимволы)
+    const normalizedSender = normalizeName(sender);
+    return ADMINS.some(admin => normalizeName(admin) === normalizedSender);
 }
 
 function addGamePlay(playerKey, value) {
@@ -244,7 +249,6 @@ async function payout(chatId, winners, adminName) {
     
     piggyBank += 500;
     
-    // Учёт лота за админом
     stats.totalLots++;
     if (!stats.adminLots[adminName]) stats.adminLots[adminName] = 0;
     stats.adminLots[adminName]++;
@@ -255,7 +259,6 @@ async function payout(chatId, winners, adminName) {
 }
 
 async function generateReport(chatId) {
-    // Часть 1: список участников
     const list = Object.entries(db);
     let memberReport = '👥 *ОТЧЕТ: УЧАСТНИКИ* 👥\n━━━━━━━━━━━━━━━━━━\n';
     if (list.length === 0) {
@@ -270,7 +273,6 @@ async function generateReport(chatId) {
     }
     await sendMessage(chatId, memberReport);
     
-    // Часть 2: общая статистика
     let totalBalance = 0;
     for (let key in db) totalBalance += db[key].balance || 0;
     
@@ -295,7 +297,6 @@ async function generateReport(chatId) {
     
     await sendMessage(chatId, generalReport);
     
-    // Сброс статистики (база игроков и копилка НЕ ТРОГАЮТСЯ!)
     stats = {
         totalLots: 0,
         adminLots: {},
@@ -318,7 +319,6 @@ async function handleMessage(chatId, sender, text, groupName) {
     
     const playerKey = ensurePlayer(sender);
     const isAdminUser = isAdmin(sender);
-    const isBoss = sender === BOSS;
     
     // ===== ПУБЛИЧНЫЕ КОМАНДЫ =====
     if (cmd === '/бот') {
@@ -491,7 +491,6 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
     
-    // Новые команды
     if (cmd === '.принять' && args) {
         const key = findPlayerKey(args);
         if (!key) { await sendMessage(chatId, `❌ Игрок "${args}" не найден`); return; }
