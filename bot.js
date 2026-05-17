@@ -63,6 +63,12 @@ const jokes = [
 const horos = ['♈ Овен: 3,7,11', '♌ Лев: 7,14,20', '♓ Рыбы: 9,13,16', '♊ Близнецы: 1,5,9'];
 const facts = ['🎲 Сегодня чаще выпадают нечётные', '🔥 70% игроков ставят на 7 и 8', '💰 Джекпот недели — 25 000₽'];
 
+function normalizeName(name) {
+    if (!name) return '';
+    // Убираем эмодзи и спецсимволы, оставляем только буквы и цифры
+    return name.toLowerCase().replace(/[^a-zа-яё0-9]/g, '').trim();
+}
+
 async function sendMessage(chatId, text) {
     try {
         await axios.post(`https://api.green-api.com/waInstance${ID_INSTANCE}/sendMessage/${API_TOKEN}`, {
@@ -77,10 +83,14 @@ async function sendMessage(chatId, text) {
 
 function getPlayerKey(name) {
     if (!name) return null;
-    const normalizedSearch = name.toLowerCase().replace(/[~@_🧿]/g, '').trim();
+    const normalizedSearch = normalizeName(name);
+    if (!normalizedSearch) return null;
+    
+    // Ищем игрока, у которого нормализованное имя совпадает
     return Object.keys(db).find(key => {
-        const keyName = key.split(' (')[0].toLowerCase().replace(/[~@_🧿]/g, '').trim();
-        return keyName === normalizedSearch;
+        const keyName = key.split(' (')[0];
+        const normalizedKey = normalizeName(keyName);
+        return normalizedKey === normalizedSearch;
     });
 }
 
@@ -89,11 +99,14 @@ function getDisplayName(playerKey) {
     return playerKey.split(' (')[0];
 }
 
+
+
+
 function isAdmin(sender) {
     if (sender === BOSS) return true;
-    if (ADMINS.includes(sender)) return true;
-    const normalized = sender.toLowerCase().replace(/[~@_🧿]/g, '').trim();
-    return ADMINS.some(admin => admin.toLowerCase().replace(/[~@_🧿]/g, '').trim() === normalized);
+    const normalizedSender = normalizeName(sender);
+    if (ADMINS.some(admin => normalizeName(admin) === normalizedSender)) return true;
+    return false;
 }
 
 function addGamePlay(playerKey, value) {
