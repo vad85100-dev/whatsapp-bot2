@@ -482,12 +482,13 @@ async function handleMessage(chatId, sender, text, groupName) {
         await sendMessage(chatId, `📊 *СТАТИСТИКА*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(playerKey)}\n🎲 Игр: ${g}\n🎟️ Меш.: ${t}\n🏆 Побед: ${w}\n💰 Баланс: ${db[playerKey]?.balance || 0}₽`);
         return;
     }
-    if (cmd === '/банк') {
+       if (cmd === '/банк') {
         const list = Object.entries(db);
         if (!list.length) { await sendMessage(chatId, '📭 База пуста'); return; }
         let out = '🏦 *БАЛАНС ВСЕХ* 🏦\n━━━━━━━━━━━━━━━━━━\n';
         list.forEach(([n, d], i) => {
-            out += `${i+1}. ${getDisplayName(n)} — ${d.balance}₽\n`;
+            const name = n.split(' (')[0];
+            out += `${i+1}. ${name} — ${d.balance}₽\n`;
         });
         await sendMessage(chatId, out);
         return;
