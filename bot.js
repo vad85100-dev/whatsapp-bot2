@@ -67,7 +67,7 @@ async function sendMessage(chatId, text) {
             chatId: chatId,
             message: text
         });
-        console.log(`✅ Отправлено: ${text.substring(0, 50)}...`);
+        console.log(`✅ Отправлено`);
     } catch (err) {
         console.error('❌ Ошибка отправки:', err.message);
     }
@@ -112,23 +112,23 @@ function addGamePlay(playerKey, value) {
 function showPiggy(chatId) {
     let totalTickets = 0;
     for (let key in db) if (db[key]?.tickets) totalTickets += db[key].tickets;
-    sendMessage(chatId, `🐷 *КОПИЛКА КАЗИНО* 🐷\n━━━━━━━━━━━━━━━━━━\n💰 Сумма в копилке: *${piggyBank}₽*\n🎟️ Всего мешочков: *${totalTickets}*`);
+    sendMessage(chatId, `🐷 *КОПИЛКА КАЗИНО* 🐷\n━━━━━━━━━━━━━━━━━━\n💰 Сумма: *${piggyBank}₽*\n🎟️ Мешочков: *${totalTickets}*`);
 }
 
 function breakPiggy(chatId) {
     if (dailyPayoutDone) {
-        sendMessage(chatId, `⚠️ *КОПИЛКА УЖЕ РАЗБИТА СЕГОДНЯ*\n━━━━━━━━━━━━━━━━━━\nСледующая разбивка завтра!`);
+        sendMessage(chatId, `⚠️ Копилка уже разбита сегодня. Завтра новая!`);
         return;
     }
     const participants = [];
     for (let key in db) if (db[key]?.tickets && db[key].tickets > 0) participants.push({ key, tickets: db[key].tickets });
     if (participants.length === 0 || piggyBank === 0) {
-        sendMessage(chatId, `❌ *НЕЛЬЗЯ РАЗБИТЬ КОПИЛКУ*\n━━━━━━━━━━━━━━━━━━\nНет мешочков или копилка пуста!`);
+        sendMessage(chatId, `❌ Нет мешочков или копилка пуста!`);
         return;
     }
     const totalTickets = participants.reduce((s, p) => s + p.tickets, 0);
     const perTicket = piggyBank / totalTickets;
-    let msg = `🐷 *РАЗБИВКА КОПИЛКИ* 🐷\n━━━━━━━━━━━━━━━━━━\n💰 Общая сумма: ${piggyBank}₽\n🎟️ Всего мешочков: ${totalTickets}\n📊 Сумма на 1 мешочек: ${Math.floor(perTicket)}₽\n\n🏆 *ПОЛУЧИЛИ:*\n`;
+    let msg = `🐷 *РАЗБИВКА КОПИЛКИ* 🐷\n━━━━━━━━━━━━━━━━━━\n💰 Сумма: ${piggyBank}₽\n🎟️ Мешочков: ${totalTickets}\n📊 На 1 мешочек: ${Math.floor(perTicket)}₽\n\n🏆 *ПОЛУЧИЛИ:*\n`;
     for (const p of participants) {
         const winnings = Math.floor(perTicket * p.tickets);
         db[p.key].balance = (db[p.key].balance || 0) + winnings;
@@ -137,7 +137,7 @@ function breakPiggy(chatId) {
     }
     piggyBank = 0;
     dailyPayoutDone = true;
-    msg += `\n\n━━━━━━━━━━━━━━━━━━\n🎉 *ВСЕ ПОЗДРАВЛЯЮТ ПОБЕДИТЕЛЕЙ!* 🎉`;
+    msg += `\n\n━━━━━━━━━━━━━━━━━━\n🎉 ПОЗДРАВЛЯЕМ! 🎉`;
     sendMessage(chatId, msg);
 }
 
@@ -146,18 +146,18 @@ function renderLot() {
     const p = prices[game.style];
     
     const prizes = [
-        { place: 1, multiplier: 3 },
-        { place: 2, multiplier: 2 },
-        { place: 3, multiplier: 1.5 },
-        { place: 4, multiplier: 1 },
-        { place: 5, multiplier: 0.8 },
-        { place: 6, multiplier: 0.5 }
+        { place: 1, mult: 3 },
+        { place: 2, mult: 2 },
+        { place: 3, mult: 1.5 },
+        { place: 4, mult: 1 },
+        { place: 5, mult: 0.8 },
+        { place: 6, mult: 0.5 }
     ];
     
-    let res = `${s.h}\n━━━━━━━━━━━━━━━━━━\n🏆 *ПРИЗОВЫЕ НОМЕРА* 🏆\n`;
+    let res = `${s.h}\n━━━━━━━━━━━━━━━━━━\n🏆 *ПРИЗЫ* 🏆\n`;
     for (let i = 0; i < 6; i++) {
-        const prize = Math.floor(p.full * prizes[i].multiplier);
-        res += `${prizes[i].place} место: ${prize}₽ (x${prizes[i].multiplier})\n`;
+        const prize = Math.floor(p.full * prizes[i].mult);
+        res += `${prizes[i].place} место: ${prize}₽ (x${prizes[i].mult})\n`;
     }
     res += `━━━━━━━━━━━━━━━━━━\n`;
     
@@ -178,15 +178,15 @@ function renderLot() {
 async function payout(chatId, winners) {
     const p = prices[game.style];
     const prizes = [
-        { place: 1, multiplier: 3 },
-        { place: 2, multiplier: 2 },
-        { place: 3, multiplier: 1.5 },
-        { place: 4, multiplier: 1 },
-        { place: 5, multiplier: 0.8 },
-        { place: 6, multiplier: 0.5 }
+        { place: 1, mult: 3 },
+        { place: 2, mult: 2 },
+        { place: 3, mult: 1.5 },
+        { place: 4, mult: 1 },
+        { place: 5, mult: 0.8 },
+        { place: 6, mult: 0.5 }
     ];
     
-    let msg = `🏆 *ВЫПЛАТА ПОБЕДИТЕЛЯМ* 🏆\n━━━━━━━━━━━━━━━━━━\n`;
+    let msg = `🏆 *ВЫПЛАТА* 🏆\n━━━━━━━━━━━━━━━━━━\n`;
     let total = 0;
     
     for (let idx = 0; idx < Math.min(winners.length, 6); idx++) {
@@ -194,39 +194,39 @@ async function payout(chatId, winners) {
         const slot = game.slots[num];
         if (!slot) continue;
         
-        const prizeMoney = Math.floor(p.full * prizes[idx].multiplier);
+        const prize = Math.floor(p.full * prizes[idx].mult);
         
         if (slot.full) {
-            const playerKey = ensurePlayer(slot.full);
-            db[playerKey].balance += prizeMoney;
-            msg += `\n${idx+1}️⃣ ${slot.full} → +${prizeMoney}₽ (x${prizes[idx].multiplier})`;
-            total += prizeMoney;
-            addGamePlay(playerKey, 1);
-            if (!db[playerKey].wins) db[playerKey].wins = 0;
-            db[playerKey].wins++;
+            const key = ensurePlayer(slot.full);
+            db[key].balance += prize;
+            msg += `\n${idx+1}️⃣ ${slot.full} → +${prize}₽ (x${prizes[idx].mult})`;
+            total += prize;
+            addGamePlay(key, 1);
+            if (!db[key].wins) db[key].wins = 0;
+            db[key].wins++;
         } else {
             if (slot.left) {
-                const playerKey = ensurePlayer(slot.left);
-                db[playerKey].balance += prizeMoney;
-                msg += `\n${idx+1}️⃣ ${slot.left} → +${prizeMoney}₽ (левая x${prizes[idx].multiplier})`;
-                total += prizeMoney;
-                addGamePlay(playerKey, 0.5);
-                if (!db[playerKey].wins) db[playerKey].wins = 0;
-                db[playerKey].wins++;
+                const key = ensurePlayer(slot.left);
+                db[key].balance += prize;
+                msg += `\n${idx+1}️⃣ ${slot.left} → +${prize}₽ (левая x${prizes[idx].mult})`;
+                total += prize;
+                addGamePlay(key, 0.5);
+                if (!db[key].wins) db[key].wins = 0;
+                db[key].wins++;
             }
             if (slot.right) {
-                const playerKey = ensurePlayer(slot.right);
-                db[playerKey].balance += prizeMoney;
-                msg += `\n${idx+1}️⃣ ${slot.right} → +${prizeMoney}₽ (правая x${prizes[idx].multiplier})`;
-                total += prizeMoney;
-                addGamePlay(playerKey, 0.5);
-                if (!db[playerKey].wins) db[playerKey].wins = 0;
-                db[playerKey].wins++;
+                const key = ensurePlayer(slot.right);
+                db[key].balance += prize;
+                msg += `\n${idx+1}️⃣ ${slot.right} → +${prize}₽ (правая x${prizes[idx].mult})`;
+                total += prize;
+                addGamePlay(key, 0.5);
+                if (!db[key].wins) db[key].wins = 0;
+                db[key].wins++;
             }
         }
     }
     
-    msg += `\n\n━━━━━━━━━━━━━━━━━━\n💰 *ОБЩИЙ ВЫИГРЫШ:* ${total}₽\n🎉 *ПОЗДРАВЛЯЕМ ПОБЕДИТЕЛЕЙ!* 🎉`;
+    msg += `\n\n━━━━━━━━━━━━━━━━━━\n💰 ВСЕГО: ${total}₽\n🎉 ПОЗДРАВЛЯЕМ! 🎉`;
     await sendMessage(chatId, msg);
     
     piggyBank += 500;
@@ -236,195 +236,168 @@ async function payout(chatId, winners) {
 }
 
 async function handleMessage(chatId, sender, text, groupName) {
-    const rawCmd = text.trim().toLowerCase();
+    let rawCmd = text.trim().toLowerCase();
     let cmd = rawCmd;
     let args = '';
-    const firstSpace = rawCmd.indexOf(' ');
-    if (firstSpace !== -1) {
-        cmd = rawCmd.substring(0, firstSpace).trim();
-        args = rawCmd.substring(firstSpace + 1).trim();
+    const spaceIdx = rawCmd.indexOf(' ');
+    if (spaceIdx !== -1) {
+        cmd = rawCmd.substring(0, spaceIdx).trim();
+        args = rawCmd.substring(spaceIdx + 1).trim();
     }
     
     const playerKey = ensurePlayer(sender);
     const isAdminUser = isAdmin(sender);
-    const isBoss = sender === BOSS;
     
-    const validCommands = [
-        '/бот', '/баланс', '/статистика', '/гадание', '/новости', '/шутка', '/топ10', '/админы', '/банк',
-        '.помощь', '.участники', '.топ10', '.копилка', '.разбить', '.умныйбот +', '.умныйбот -',
-        '.начать', '.список', '.пауза лот', '.победители', '.средства', '.поиск', '.удалить'
-    ];
-    
-    // Публичные команды
+    // ===== ПУБЛИЧНЫЕ КОМАНДЫ =====
     if (cmd === '/бот') {
-        await sendMessage(chatId, `🤖 *ПРИВЕТ, ИГРОК!* 🤖\n━━━━━━━━━━━━━━━━━━\n/баланс 💰\n/статистика 📊\n/банк 🏦\n/гадание 🔮\n/новости 📰\n/шутка 😂\n/топ10 🏆\n/админы 👑`);
+        await sendMessage(chatId, `🤖 *МЕНЮ ИГРОКА*\n━━━━━━━━━━━━━━━━━━\n/баланс 💰\n/статистика 📊\n/банк 🏦\n/гадание 🔮\n/новости 📰\n/шутка 😂\n/топ10 🏆\n/админы 👑`);
         return;
     }
     if (cmd === '/баланс') {
-        await sendMessage(chatId, `💰 *МОЙ БАЛАНС* 💰\n━━━━━━━━━━━━━━━━━━\n👤 ${sender}\n💎 Баланс: ${db[playerKey]?.balance || 0}₽`);
+        await sendMessage(chatId, `💰 *БАЛАНС*\n━━━━━━━━━━━━━━━━━━\n👤 ${sender}\n💎 ${db[playerKey]?.balance || 0}₽`);
         return;
     }
     if (cmd === '/статистика') {
-        const games = db[playerKey]?.games || 0;
-        const tickets = db[playerKey]?.tickets || 0;
-        const wins = db[playerKey]?.wins || 0;
-        await sendMessage(chatId, `📊 *МОЯ СТАТИСТИКА* 📊\n━━━━━━━━━━━━━━━━━━\n🎲 Игр: ${games}\n🎟️ Меш.: ${tickets}\n🏆 Побед: ${wins}\n💰 Баланс: ${db[playerKey]?.balance || 0}₽`);
+        const g = db[playerKey]?.games || 0;
+        const t = db[playerKey]?.tickets || 0;
+        const w = db[playerKey]?.wins || 0;
+        await sendMessage(chatId, `📊 *СТАТИСТИКА*\n━━━━━━━━━━━━━━━━━━\n🎲 Игр: ${g}\n🎟️ Меш.: ${t}\n🏆 Побед: ${w}\n💰 Баланс: ${db[playerKey]?.balance || 0}₽`);
         return;
     }
     if (cmd === '/банк') {
         const list = Object.entries(db);
         if (!list.length) { await sendMessage(chatId, '📭 База пуста'); return; }
-        let out = '🏦 *БАЛАНС ИГРОКОВ* 🏦\n━━━━━━━━━━━━━━━━━━\n';
+        let out = '🏦 *БАЛАНС ВСЕХ* 🏦\n━━━━━━━━━━━━━━━━━━\n';
         list.forEach(([n, d], i) => {
-            const name = n.split(' (')[0];
-            out += `${i+1}. ${name} — ${d.balance}₽\n`;
+            out += `${i+1}. ${n.split(' (')[0]} — ${d.balance}₽\n`;
         });
         await sendMessage(chatId, out);
         return;
     }
     if (cmd === '/гадание') {
-        await sendMessage(chatId, `🔮 *ГАДАНИЕ* 🔮\n━━━━━━━━━━━━━━━━━━\n${horos[Math.floor(Math.random() * horos.length)]}`);
+        await sendMessage(chatId, `🔮 *ГАДАНИЕ*\n━━━━━━━━━━━━━━━━━━\n${horos[Math.floor(Math.random() * horos.length)]}`);
         return;
     }
     if (cmd === '/новости') {
-        await sendMessage(chatId, `📰 *НОВОСТЬ* 📰\n━━━━━━━━━━━━━━━━━━\n${facts[Math.floor(Math.random() * facts.length)]}`);
+        await sendMessage(chatId, `📰 *НОВОСТЬ*\n━━━━━━━━━━━━━━━━━━\n${facts[Math.floor(Math.random() * facts.length)]}`);
         return;
     }
     if (cmd === '/шутка') {
-        await sendMessage(chatId, `😂 *ШУТКА* 😂\n━━━━━━━━━━━━━━━━━━\n${jokes[Math.floor(Math.random() * jokes.length)]}`);
+        await sendMessage(chatId, `😂 *ШУТКА*\n━━━━━━━━━━━━━━━━━━\n${jokes[Math.floor(Math.random() * jokes.length)]}`);
         return;
     }
     if (cmd === '/топ10') {
-        const top = Object.entries(db).sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0)).slice(0, 10);
+        const top = Object.entries(db).sort((a,b) => (b[1].balance||0)-(a[1].balance||0)).slice(0,10);
         if (!top.length) { await sendMessage(chatId, '🏆 ТОП-10\nНет данных'); return; }
         let out = '🏆 *ТОП-10* 🏆\n━━━━━━━━━━━━━━━━━━\n';
-        top.forEach(([n, d], i) => out += `${i+1}. ${n.split(' (')[0]} — ${d.balance}₽\n`);
+        top.forEach(([n,d],i) => out += `${i+1}. ${n.split(' (')[0]} — ${d.balance}₽\n`);
         await sendMessage(chatId, out);
         return;
     }
     if (cmd === '/админы') {
-        await sendMessage(chatId, `👑 *АДМИНИСТРАЦИЯ* 👑\n━━━━━━━━━━━━━━━━━━\n${BOSS}\n${ADMINS.join('\n')}`);
+        await sendMessage(chatId, `👑 *АДМИНЫ* 👑\n━━━━━━━━━━━━━━━━━━\n${BOSS}\n${ADMINS.join('\n')}`);
         return;
     }
     
-    // СТАВКИ
-    if (game.active && !game.paused) {
-        const isBet = /^[\d,\/\\]+$/.test(cmd);
-        if (isBet) {
-            const playerKey = findPlayerKey(sender);
-            if (!playerKey) {
-                await sendMessage(chatId, `❌ Игрок "${sender}" не найден в базе.`);
-                return;
-            }
-            
-            const bets = cmd.split(',').map(b => b.trim());
-            let totalCost = 0;
-            const validBets = [];
-            const errors = [];
-            const p = prices[game.style];
-            
-            for (const bet of bets) {
-                let num = parseInt(bet);
-                let type = 'full';
-                if (bet.endsWith('/')) { type = 'half'; num = parseInt(bet.slice(0, -1)); }
-                if (bet.endsWith('\\')) { type = 'half'; num = parseInt(bet.slice(0, -1)); }
-                
-                if (isNaN(num) || num < 1 || num > game.max) {
-                    errors.push(`❌ "${bet}" — неверный номер`);
-                    continue;
-                }
-                
-                const need = (type === 'full') ? p.full : p.half;
-                const slot = game.slots[num] || {};
-                
-                if (type === 'full' && (slot.full || slot.left || slot.right)) {
-                    errors.push(`❌ Номер ${num} уже занят`);
-                    continue;
-                }
-                if (type === 'half' && slot.full) {
-                    errors.push(`❌ Номер ${num} уже занят целиком`);
-                    continue;
-                }
-                if (type === 'half' && slot.left && slot.right) {
-                    errors.push(`❌ Номер ${num} полностью занят`);
-                    continue;
-                }
-                
-                validBets.push({ num, type, need });
-                totalCost += need;
-            }
-            
-            if (errors.length > 0) {
-                await sendMessage(chatId, `❌ *ОШИБКИ В СТАВКАХ*\n${errors.join('\n')}`);
-                return;
-            }
-            
-            const currentBalance = db[playerKey]?.balance || 0;
-            if (currentBalance < totalCost) {
-                await sendMessage(chatId, `❌ *НЕ ХВАТАЕТ ${totalCost}₽*\n💰 Ваш баланс: ${currentBalance}₽`);
-                return;
-            }
-            
-            db[playerKey].balance -= totalCost;
-            
-            for (const bet of validBets) {
-                if (!game.slots[bet.num]) game.slots[bet.num] = {};
-                if (bet.type === 'full') game.slots[bet.num].full = sender;
-                else if (bet.type === 'half') {
-                    if (!game.slots[bet.num].left) game.slots[bet.num].left = sender;
-                    else if (!game.slots[bet.num].right) game.slots[bet.num].right = sender;
-                }
-            }
-            
-            let allFilled = true;
-            for (let i = 1; i <= game.max; i++) {
-                const s = game.slots[i];
-                if (!s || (!s.full && !s.left && !s.right)) { allFilled = false; break; }
-            }
-            if (allFilled) game.paused = true;
-            
-            let successMsg = `✅ *СТАВКИ ПРИНЯТЫ*\n━━━━━━━━━━━━━━━━━━\n`;
-            for (const bet of validBets) {
-                const price = bet.type === 'full' ? p.full : p.half;
-                successMsg += `🎲 Номер ${bet.num}${bet.type === 'half' ? '/' : ''} — ${price}₽\n`;
-            }
-            successMsg += `\n💰 Всего списано: ${totalCost}₽\n\n${renderLot()}`;
-            await sendMessage(chatId, successMsg);
+    // ===== СТАВКИ =====
+    if (game.active && !game.paused && /^[\d,\/\\]+$/.test(cmd)) {
+        const betKey = findPlayerKey(sender);
+        if (!betKey) {
+            await sendMessage(chatId, `❌ Игрок "${sender}" не найден в базе`);
             return;
         }
+        
+        const bets = cmd.split(',').map(b => b.trim());
+        let totalCost = 0;
+        const validBets = [];
+        const errors = [];
+        const p = prices[game.style];
+        
+        for (const bet of bets) {
+            let num = parseInt(bet);
+            let type = 'full';
+            if (bet.endsWith('/')) { type = 'half'; num = parseInt(bet.slice(0,-1)); }
+            if (bet.endsWith('\\')) { type = 'half'; num = parseInt(bet.slice(0,-1)); }
+            if (isNaN(num) || num < 1 || num > game.max) {
+                errors.push(`❌ "${bet}" неверный номер`);
+                continue;
+            }
+            const need = type === 'full' ? p.full : p.half;
+            const slot = game.slots[num] || {};
+            if (type === 'full' && (slot.full || slot.left || slot.right)) {
+                errors.push(`❌ Номер ${num} уже занят`);
+                continue;
+            }
+            if (type === 'half' && slot.full) {
+                errors.push(`❌ Номер ${num} уже занят целиком`);
+                continue;
+            }
+            if (type === 'half' && slot.left && slot.right) {
+                errors.push(`❌ Номер ${num} полностью занят`);
+                continue;
+            }
+            validBets.push({ num, type, need });
+            totalCost += need;
+        }
+        
+        if (errors.length) {
+            await sendMessage(chatId, `❌ *ОШИБКИ*\n${errors.join('\n')}`);
+            return;
+        }
+        
+        const balance = db[betKey]?.balance || 0;
+        if (balance < totalCost) {
+            await sendMessage(chatId, `❌ *НЕ ХВАТАЕТ ${totalCost}₽*\n💰 Баланс: ${balance}₽`);
+            return;
+        }
+        
+        db[betKey].balance -= totalCost;
+        
+        for (const bet of validBets) {
+            if (!game.slots[bet.num]) game.slots[bet.num] = {};
+            if (bet.type === 'full') game.slots[bet.num].full = sender;
+            else if (bet.type === 'half') {
+                if (!game.slots[bet.num].left) game.slots[bet.num].left = sender;
+                else if (!game.slots[bet.num].right) game.slots[bet.num].right = sender;
+            }
+        }
+        
+        let allFilled = true;
+        for (let i = 1; i <= game.max; i++) {
+            const s = game.slots[i];
+            if (!s || (!s.full && !s.left && !s.right)) { allFilled = false; break; }
+        }
+        if (allFilled) game.paused = true;
+        
+        let success = `✅ *СТАВКИ ПРИНЯТЫ*\n━━━━━━━━━━━━━━━━━━\n`;
+        for (const bet of validBets) {
+            const price = bet.type === 'full' ? p.full : p.half;
+            success += `🎲 Номер ${bet.num}${bet.type === 'half' ? '/' : ''} — ${price}₽\n`;
+        }
+        success += `\n💰 Списано: ${totalCost}₽\n\n${renderLot()}`;
+        await sendMessage(chatId, success);
+        return;
     }
     
-    // АДМИН-КОМАНДЫ
+    // ===== АДМИН-КОМАНДЫ =====
     if (!isAdminUser) {
-        if (cmd.startsWith('/') && !validCommands.includes(cmd)) {
-            await sendMessage(chatId, `❌ *НЕТ ТАКОЙ КОМАНДЫ*\n💡 Введи /бот для списка команд.`);
+        if (cmd.startsWith('/') && !['/бот','/баланс','/статистика','/банк','/гадание','/новости','/шутка','/топ10','/админы'].includes(cmd)) {
+            await sendMessage(chatId, `❌ *НЕТ КОМАНДЫ*\n💡 Введи /бот`);
         }
         return;
     }
     
     if (cmd === '.помощь') {
-        await sendMessage(chatId, `🔥👑 *TITAN CASINO* 👑🔥
+        await sendMessage(chatId, `🔥 *TITAN CASINO* 🔥
 ━━━━━━━━━━━━━━━━━━━━━
-📌 *ОСНОВНЫЕ*
 .участники | .поиск | .топ10 | .удалить
-
-💰 *ФИНАНСЫ*
 .средства [имя] +[сумма]
 .средства [имя] -[сумма]
-
-🎲 *ЛОТ*
 .начать [стиль] [число]
 .список | .пауза лот
-.победители [номера]
-
-🐷 *КОПИЛКА*
+.победители [1 2 3]
 .копилка | .разбить
-
-🤖 *УМНЫЙ БОТ*
-.умныйбот + | .умныйбот -
-
-🎮 *ДЛЯ ИГРОКОВ*
-/бот | /баланс | /статистика | /банк | /гадание | /новости | /шутка | /топ10 | /админы`);
+.умныйбот + | .умныйбот -`);
         return;
     }
     if (cmd === '.умныйбот +') {
@@ -437,52 +410,42 @@ async function handleMessage(chatId, sender, text, groupName) {
         await sendMessage(chatId, '💤 *УМНЫЙ БОТ ВЫКЛЮЧЁН*');
         return;
     }
-    if (cmd === '.копилка') {
-        await showPiggy(chatId);
-        return;
-    }
-    if (cmd === '.разбить') {
-        await breakPiggy(chatId);
-        return;
-    }
+    if (cmd === '.копилка') { showPiggy(chatId); return; }
+    if (cmd === '.разбить') { breakPiggy(chatId); return; }
     if (cmd === '.участники') {
         const list = Object.entries(db);
         if (!list.length) { await sendMessage(chatId, '📭 База пуста'); return; }
         let out = '👥 *УЧАСТНИКИ*\n━━━━━━━━━━━━━━━━━━\n';
-        list.forEach(([n, d], i) => {
-            const name = n.split(' (')[0];
-            out += `${i+1}. ${name} — ${d.balance}₽\n`;
-        });
+        list.forEach(([n,d],i) => out += `${i+1}. ${n.split(' (')[0]} — ${d.balance}₽\n`);
         await sendMessage(chatId, out);
         return;
     }
     if (cmd === '.топ10') {
-        const top = Object.entries(db).sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0)).slice(0, 10);
+        const top = Object.entries(db).sort((a,b) => (b[1].balance||0)-(a[1].balance||0)).slice(0,10);
         if (!top.length) { await sendMessage(chatId, '📭 Нет данных'); return; }
         let out = '🏆 *ТОП-10* 🏆\n━━━━━━━━━━━━━━━━━━\n';
-        top.forEach(([n, d], i) => out += `${i+1}. ${n.split(' (')[0]} — ${d.balance}₽\n`);
+        top.forEach(([n,d],i) => out += `${i+1}. ${n.split(' (')[0]} — ${d.balance}₽\n`);
         await sendMessage(chatId, out);
         return;
     }
     if (cmd === '.поиск' && args) {
-        const res = Object.keys(db).filter(key => key.toLowerCase().includes(args.toLowerCase()));
+        const res = Object.keys(db).filter(k => k.toLowerCase().includes(args.toLowerCase()));
         if (!res.length) { await sendMessage(chatId, `❌ "${args}" не найден`); return; }
-        let out = '🔎 *РЕЗУЛЬТАТ ПОИСКА*\n━━━━━━━━━━━━━━━━━━\n';
-        res.slice(0, 5).forEach(key => out += `\n${key.split(' (')[0]} — ${db[key].balance}₽`);
+        let out = '🔎 *РЕЗУЛЬТАТ*\n━━━━━━━━━━━━━━━━━━\n';
+        res.slice(0,5).forEach(k => out += `\n${k.split(' (')[0]} — ${db[k].balance}₽`);
         await sendMessage(chatId, out);
         return;
     }
     if (cmd === '.средства' && args) {
         const op = args.includes('+') ? '+' : (args.includes('-') ? '-' : null);
-        if (!op) return;
+        if (!op) { await sendMessage(chatId, '❌ .средства [имя] +[сумма]'); return; }
         const parts = args.split(op);
         let name = parts[0].trim();
         let val = parseInt(parts[1]);
         if (isNaN(val)) { await sendMessage(chatId, '❌ Сумма не число'); return; }
-        
         let key = findPlayerKey(name);
         if (!key) {
-            key = `${name} (manual)`;
+            key = `${name} (new)`;
             db[key] = { balance: 0, games: 0, tickets: 0, wins: 0 };
         }
         const old = db[key].balance || 0;
@@ -492,20 +455,17 @@ async function handleMessage(chatId, sender, text, groupName) {
     }
     if (cmd === '.удалить' && args) {
         const key = findPlayerKey(args);
-        if (!key) {
-            await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
-            return;
-        }
+        if (!key) { await sendMessage(chatId, `❌ "${args}" не найден`); return; }
         delete db[key];
-        await sendMessage(chatId, `🗑️ *ИГРОК УДАЛЁН*\n👤 ${args} удалён из базы.`);
+        await sendMessage(chatId, `🗑️ *УДАЛЁН*\n👤 ${args}`);
         return;
     }
     if (cmd === '.начать' && args) {
         const parts = args.split(/\s+/);
-        const number = parseInt(parts[parts.length - 1]);
-        const styleName = parts.slice(0, -1).join(' ').toLowerCase();
-        if (styles[styleName] && !isNaN(number)) {
-            game = { active: true, paused: false, style: styleName, max: number, slots: {} };
+        const num = parseInt(parts[parts.length-1]);
+        const style = parts.slice(0,-1).join(' ').toLowerCase();
+        if (styles[style] && !isNaN(num) && num > 0) {
+            game = { active: true, paused: false, style: style, max: num, slots: {} };
             await sendMessage(chatId, renderLot());
         } else {
             await sendMessage(chatId, `❌ .начать [стиль] [число]\nПример: .начать феникс 10`);
@@ -522,58 +482,46 @@ async function handleMessage(chatId, sender, text, groupName) {
             game.paused = true;
             await sendMessage(chatId, `⏸️ *ЛОТ НА ПАУЗЕ*\n\n${renderLot()}`);
         } else {
-            await sendMessage(chatId, '❌ Нет активного лота');
+            await sendMessage(chatId, '❌ Нет лота');
         }
         return;
     }
     if (cmd === '.победители' && args && game.paused) {
         const wins = args.match(/\d+/g);
-        if (wins && wins.length) {
-            await payout(chatId, wins);
-        } else {
-            await sendMessage(chatId, '❌ .победители 1 2 3 4 5 6');
-        }
+        if (wins && wins.length) await payout(chatId, wins);
+        else await sendMessage(chatId, '❌ .победители 1 2 3');
         return;
     }
     
-    // УМНЫЙ БОТ
-    if (smartBot && !cmd.startsWith('.') && !cmd.startsWith('/')) {
-        const replies = ['🎲 Удачи в лоте!', '🔥 Ставки сделаны?', '💰 Фарта тебе!', '🍀 Сегодня твой день!'];
+    if (smartBot && !cmd.startsWith('.') && !cmd.startsWith('/') && cmd.length > 1) {
+        const replies = ['🎲 Удачи!', '🔥 Ставки?', '💰 Фарта!', '🍀 Сегодня твой день!'];
         await sendMessage(chatId, replies[Math.floor(Math.random() * replies.length)]);
         return;
-    }
-    
-    if (cmd.startsWith('.') && !validCommands.includes(cmd)) {
-        await sendMessage(chatId, `❌ *НЕТ ТАКОЙ КОМАНДЫ*\n💡 Введи .помощь для списка команд.`);
     }
 }
 
 app.post('/webhook', async (req, res) => {
-    const webhook = req.body;
-    console.log('📩 Получен вебхук');
-
-    const groupName = webhook.senderData?.chatName || '';
-    const chatId = webhook.senderData?.chatId;
-    const sender = webhook.senderData?.senderName || webhook.senderData?.sender;
-    const text = webhook.messageData?.textMessageData?.textMessage;
-
+    const wh = req.body;
+    console.log('📩 Вебхук');
+    
+    const groupName = wh.senderData?.chatName || '';
+    const chatId = wh.senderData?.chatId;
+    const sender = wh.senderData?.senderName || wh.senderData?.sender;
+    const text = wh.messageData?.textMessageData?.textMessage;
+    
     const isGroup = chatId && chatId.includes('@g.us');
-    if (isGroup && groupName && ALLOWED_GROUPS.length > 0 && !ALLOWED_GROUPS.includes(groupName)) {
-        console.log(`⛔ Группа "${groupName}" не в белом списке`);
+    if (isGroup && groupName && ALLOWED_GROUPS.length && !ALLOWED_GROUPS.includes(groupName)) {
+        console.log(`⛔ Группа "${groupName}" не в списке`);
         res.status(200).send('OK');
         return;
     }
-
-    if (webhook.typeWebhook === 'incomingMessageReceived' || webhook.typeWebhook === 'outgoingMessageReceived') {
-        if (chatId && text) {
-            await handleMessage(chatId, sender || chatId.split('@')[0], text, groupName);
-        }
+    
+    if (wh.typeWebhook === 'incomingMessageReceived' || wh.typeWebhook === 'outgoingMessageReceived') {
+        if (chatId && text) await handleMessage(chatId, sender || chatId.split('@')[0], text, groupName);
     }
-
+    
     res.status(200).send('OK');
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`✅ Бот запущен на порту ${PORT}`);
-});
+app.listen(PORT, () => console.log(`✅ Бот на порту ${PORT}`));
