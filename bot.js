@@ -589,7 +589,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         const currentBalance = db[playerKey]?.balance || 0;
         const newBalance = currentBalance - totalCost;
         
-        if (newBalance < -2000) {
+        if (newBalance < -999999999999) {
             await sendMessage(chatId, `❌ *НЕЛЬЗЯ СТАВИТЬ*\n━━━━━━━━━━━━━━━━━━\n💰 Баланс: ${currentBalance}₽\n📉 Макс. минус: -2000₽\n💡 Нужно ${totalCost - (currentBalance + 2000)}₽ до лимита`);
             return;
         }
