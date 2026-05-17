@@ -77,7 +77,8 @@ async function sendMessage(chatId, text) {
 
 function normalizeName(name) {
     if (!name) return '';
-    return name.toLowerCase().replace(/^~/, '').replace(/[^a-zа-яё0-9]/g, '').trim();
+    // Ничего не удаляем, только приводим к нижнему регистру для сравнения
+    return name.toLowerCase().trim();
 }
 
 function getPlayerKey(nameOrId) {
@@ -89,15 +90,27 @@ function getPlayerKey(nameOrId) {
         return Object.keys(db).find(key => db[key]?.id === idNum);
     }
     
-    // Иначе ищем по нормализованному имени
-    const normalizedSearch = normalizeName(nameOrId);
-    if (!normalizedSearch) return null;
-    
+    // Иначе ищем по точному имени (без нормализации, но без учёта регистра)
+    const searchName = nameOrId.toLowerCase().trim();
     return Object.keys(db).find(key => {
-        const keyName = key.split(' (')[0];
-        const normalizedKey = normalizeName(keyName);
-        return normalizedKey === normalizedSearch;
+        const keyName = key.split(' (')[0].toLowerCase().trim();
+        return keyName === searchName;
     });
+}
+
+function ensurePlayer(name) {
+    let key = getPlayerKey(name);
+    if (!key) {
+        // Генерируем новый ID
+        const existingIds = Object.values(db).map(p => p.id || 0);
+        const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 9;
+        const newId = maxId + 1;
+        
+        // Сохраняем ОРИГИНАЛЬНОЕ имя (как пришло от WhatsApp)
+        key = `${name} (auto)`;
+        db[key] = { balance: 0, games: 0, tickets: 0, wins: 0, id: newId };
+    }
+    return key;
 }
 
 function getDisplayName(playerKey) {
