@@ -131,12 +131,25 @@ function getDisplayName(playerKey) {
 
 function isAdmin(sender) {
     if (sender === BOSS) return true;
-    // Нормализуем имя (убираем эмодзи, регистр)
-    const normalized = sender.toLowerCase().replace(/[^a-zа-яё0-9]/g, '').trim();
+    
+    // Нормализуем имя отправителя (убираем тильду, эмодзи, регистр)
+    const normalizedSender = sender.toLowerCase().replace(/^~/, '').replace(/[^a-zа-яё0-9]/g, '').trim();
+    
     // Проверяем по списку ADMINS (тоже нормализуем)
-    if (ADMINS.some(admin => admin.toLowerCase().replace(/[^a-zа-яё0-9]/g, '').trim() === normalized)) return true;
+    if (ADMINS.some(admin => {
+        const normalizedAdmin = admin.toLowerCase().replace(/^~/, '').replace(/[^a-zа-яё0-9]/g, '').trim();
+        return normalizedAdmin === normalizedSender;
+    })) return true;
+    
+    // Проверяем по базе данных (если у игрока есть флаг isAdmin)
+    const playerKey = getPlayerKey(sender);
+    if (playerKey && db[playerKey]?.isAdmin === true) return true;
+    
     return false;
 }
+
+
+
 function addGamePlay(playerKey, value) {
     if (!db[playerKey]) return;
     if (!db[playerKey].games) db[playerKey].games = 0;
@@ -675,6 +688,28 @@ async function handleMessage(chatId, sender, text, groupName) {
         }
         db[key].balance = 0;
         await sendMessage(chatId, `✅ *ОПЛАТА ПРИНЯТА*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}\n📉 Долг был: ${current}₽\n📈 Баланс обнулён`);
+        return;
+    }
+
+    if (cmd === '.админ' && args && sender === BOSS) {
+        const key = getPlayerKey(args);
+        if (!key) {
+            await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
+            return;
+        }
+        db[key].isAdmin = true;
+        await sendMessage(chatId, `✅ *АДМИН НАЗНАЧЕН*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}\nТеперь может использовать команды с точкой.`);
+        return;
+    }
+    
+    if (cmd === '.убрать админ' && args && sender === BOSS) {
+        const key = getPlayerKey(args);
+        if (!key) {
+            await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
+            return;
+        }
+        db[key].isAdmin = false;
+        await sendMessage(chatId, `🗑️ *АДМИН УБРАН*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}`);
         return;
     }
     
