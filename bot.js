@@ -245,6 +245,7 @@ async function payout(chatId, winners, adminName) {
     
     piggyBank += 500;
     stats.totalLots++;
+    if (!stats.adminLots) stats.adminLots = {};
     stats.adminLots[adminName] = (stats.adminLots[adminName] || 0) + 1;
     game.active = false;
     game.paused = false;
@@ -252,30 +253,6 @@ async function payout(chatId, winners, adminName) {
 }
 
 async function generateReport(chatId) {
-    const list = Object.entries(db);
-    let memberReport = '👥 *ОТЧЕТ: УЧАСТНИКИ* 👥\n━━━━━━━━━━━━━━━━━━\n';
-    if (list.length === 0) {
-        memberReport += 'Нет участников\n';
-    } else {
-        list.forEach(([n, d], i) => {
-            const name = getDisplayName(n);
-            const games = d.games || 0;
-            const tickets = d.tickets || 0;
-            memberReport += `${i+1}. ${name}\n   🎲 Игр: ${games} | 🎟️ Меш.: ${tickets} | 💰 ${d.balance}₽\n`;
-        });
-    }
-    await sendMessage(chatId, memberReport);
-    
-    let totalBalance = 0;
-    for (let key in db) totalBalance += db[key].balance || 0;
-    
-    let adminStats = '';
-    for (let [admin, count] of Object.entries(stats.adminLots)) {
-        adminStats += `\n👑 ${admin} — ${count} лот(ов)`;
-    }
-    if (!adminStats) adminStats = '\nНет данных';
-    
-   async function generateReport(chatId) {
     const list = Object.entries(db);
     let memberReport = '👥 *ОТЧЕТ: УЧАСТНИКИ* 👥\n━━━━━━━━━━━━━━━━━━\n';
     if (list.length === 0) {
@@ -337,13 +314,7 @@ async function exportData(chatId) {
         stats: stats
     };
     const jsonStr = JSON.stringify(exportObj);
-    // Разбиваем на части, если слишком длинное
-    if (jsonStr.length > 4000) {
-        // Отправляем как файл (текст)
-        await sendMessage(chatId, `📦 *ЭКСПОРТ ДАННЫХ*\n━━━━━━━━━━━━━━━━━━\nДанные слишком большие. Скопируй JSON ниже и сохрани:\n\n${jsonStr}`);
-    } else {
-        await sendMessage(chatId, `📦 *ЭКСПОРТ ДАННЫХ*\n━━━━━━━━━━━━━━━━━━\nДля восстановления используй команду:\n.вставить [JSON]\n\nДанные:\n${jsonStr}`);
-    }
+    await sendMessage(chatId, `📦 *ЭКСПОРТ ДАННЫХ*\n━━━━━━━━━━━━━━━━━━\nДля восстановления используй команду:\n.вставить [JSON]\n\nДанные:\n${jsonStr}`);
 }
 
 async function importData(chatId, jsonStr) {
@@ -354,7 +325,6 @@ async function importData(chatId, jsonStr) {
             return;
         }
         
-        // Восстанавливаем данные
         db = data.db;
         game = { 
             active: data.game?.active || false, 
@@ -498,7 +468,6 @@ async function handleMessage(chatId, sender, text, groupName) {
         const currentBalance = db[playerKey]?.balance || 0;
         const newBalance = currentBalance - totalCost;
         
-        // Лимит минуса -2000 для всех
         if (newBalance < -2000) {
             await sendMessage(chatId, `❌ *НЕЛЬЗЯ СТАВИТЬ*\n━━━━━━━━━━━━━━━━━━\n💰 Баланс: ${currentBalance}₽\n📉 Макс. минус: -2000₽\n💡 Нужно ${totalCost - (currentBalance + 2000)}₽ до лимита`);
             return;
