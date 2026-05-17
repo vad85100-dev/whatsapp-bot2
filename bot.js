@@ -65,7 +65,7 @@ const facts = ['🎲 Сегодня чаще выпадают нечётные',
 
 function normalizeName(name) {
     if (!name) return '';
-    // Убираем эмодзи и спецсимволы, оставляем только буквы и цифры
+    // Убираем эмодзи и спецсимволы, НО СОХРАНЯЕМ ЦИФРЫ И БУКВЫ
     return name.toLowerCase().replace(/[^a-zа-яё0-9]/g, '').trim();
 }
 
@@ -93,10 +93,19 @@ function getPlayerKey(name) {
         return normalizedKey === normalizedSearch;
     });
 }
-
 function getDisplayName(playerKey) {
     if (!playerKey) return 'Неизвестно';
     return playerKey.split(' (')[0];
+}
+
+function ensurePlayer(name) {
+    let key = getPlayerKey(name);
+    if (!key) {
+        // Сохраняем ОРИГИНАЛЬНОЕ имя (с эмодзи), а не нормализованное
+        key = `${name} (auto)`;
+        db[key] = { balance: 0, games: 0, tickets: 0, wins: 0 };
+    }
+    return key;
 }
 
 
