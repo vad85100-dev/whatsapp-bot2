@@ -9,7 +9,7 @@ const API_TOKEN = process.env.API_TOKEN;
 const BOSS = 'P14';
 const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель 🧿', 'Галина Дубль'];
 
-const ALLOWED_GROUPS = ['тестовая система автоматизации', 'Колесо Фортуны, резерв'];
+const ALLOWED_GROUPS = ['тестовая система автоматизации', 'Колесо Фортуны, резерв','У Фаягуль'];
 
 let db = {};
 let game = { active: false, paused: false, style: 'феникс', slots: {}, max: 0 };
