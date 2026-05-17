@@ -201,7 +201,7 @@ async function payout(chatId, winners, adminName) {
         { place: 6, mult: 0.5 }
     ];
     
-    let msg = `🏆 *ВЫПЛАТА* 🏆\n━━━━━━━━━━━━━━━━━━\n`;
+    let msg = `🏆 *ВЫПЛАТА ПОБЕДИТЕЛЯМ* 🏆\n━━━━━━━━━━━━━━━━━━\n`;
     let total = 0;
     
     for (let idx = 0; idx < Math.min(winners.length, 6); idx++) {
@@ -209,50 +209,47 @@ async function payout(chatId, winners, adminName) {
         const slot = game.slots[num];
         if (!slot) continue;
         
-        const prize = Math.floor(p.full * prizes[idx].mult);
+        const prizeMoney = Math.floor(p.full * prizes[idx].mult);
         
         if (slot.full) {
-            const key = ensurePlayer(slot.full);
-            db[key].balance += prize;
-            msg += `\n${idx+1}️⃣ ${slot.full} → +${prize}₽ (x${prizes[idx].mult})`;
-            total += prize;
-            addGamePlay(key, 1);
-            if (!db[key].wins) db[key].wins = 0;
-            db[key].wins++;
+            const playerKey = ensurePlayer(slot.full);
+            db[playerKey].balance += prizeMoney;
+            msg += `\n${idx+1}️⃣ ${slot.full} → +${prizeMoney}₽ (x${prizes[idx].mult})`;
+            total += prizeMoney;
+            addGamePlay(playerKey, 1);
+            if (!db[playerKey].wins) db[playerKey].wins = 0;
+            db[playerKey].wins++;
             stats.totalGames += 1;
         } else {
             if (slot.left) {
-                const key = ensurePlayer(slot.left);
-                db[key].balance += prize;
-                msg += `\n${idx+1}️⃣ ${slot.left} → +${prize}₽ (левая x${prizes[idx].mult})`;
-                total += prize;
-                addGamePlay(key, 0.5);
-                if (!db[key].wins) db[key].wins = 0;
-                db[key].wins++;
+                const playerKey = ensurePlayer(slot.left);
+                db[playerKey].balance += prizeMoney;
+                msg += `\n${idx+1}️⃣ ${slot.left} → +${prizeMoney}₽ (левая x${prizes[idx].mult})`;
+                total += prizeMoney;
+                addGamePlay(playerKey, 0.5);
+                if (!db[playerKey].wins) db[playerKey].wins = 0;
+                db[playerKey].wins++;
                 stats.totalGames += 0.5;
             }
             if (slot.right) {
-                const key = ensurePlayer(slot.right);
-                db[key].balance += prize;
-                msg += `\n${idx+1}️⃣ ${slot.right} → +${prize}₽ (правая x${prizes[idx].mult})`;
-                total += prize;
-                addGamePlay(key, 0.5);
-                if (!db[key].wins) db[key].wins = 0;
-                db[key].wins++;
+                const playerKey = ensurePlayer(slot.right);
+                db[playerKey].balance += prizeMoney;
+                msg += `\n${idx+1}️⃣ ${slot.right} → +${prizeMoney}₽ (правая x${prizes[idx].mult})`;
+                total += prizeMoney;
+                addGamePlay(playerKey, 0.5);
+                if (!db[playerKey].wins) db[playerKey].wins = 0;
+                db[playerKey].wins++;
                 stats.totalGames += 0.5;
             }
         }
     }
     
-    msg += `\n\n━━━━━━━━━━━━━━━━━━\n💰 ВСЕГО: ${total}₽\n🎉 ПОЗДРАВЛЯЕМ! 🎉`;
+    msg += `\n\n━━━━━━━━━━━━━━━━━━\n💰 *ОБЩИЙ ВЫИГРЫШ:* ${total}₽\n🎉 *ПОЗДРАВЛЯЕМ ПОБЕДИТЕЛЕЙ!* 🎉`;
     await sendMessage(chatId, msg);
     
     piggyBank += 500;
-    
     stats.totalLots++;
-    if (!stats.adminLots[adminName]) stats.adminLots[adminName] = 0;
-    stats.adminLots[adminName]++;
-    
+    stats.adminLots[adminName] = (stats.adminLots[adminName] || 0) + 1;
     game.active = false;
     game.paused = false;
     game.slots = {};
@@ -625,10 +622,25 @@ async function handleMessage(chatId, sender, text, groupName) {
         }
         return;
     }
-    if (cmd === '.победители' && args && game.paused) {
+        if (cmd === '.победители' && args && game.paused) {
         const wins = args.match(/\d+/g);
-        if (wins && wins.length) await payout(chatId, wins, sender);
-        else await sendMessage(chatId, '❌ .победители 1 2 3');
+        if (wins && wins.length) {
+            // Проверяем, что номера победителей не повторяются
+            const uniqueWins = [...new Set(wins)];
+            if (uniqueWins.length !== wins.length) {
+                await sendMessage(chatId, `❌ *ОШИБКА*: номера победителей не должны повторяться!`);
+                return;
+            }
+            // Проверяем, что все номера есть в лоте (кто-то их занял)
+            const missing = wins.filter(n => !game.slots[n] || (!game.slots[n].full && !game.slots[n].left && !game.slots[n].right));
+            if (missing.length > 0) {
+                await sendMessage(chatId, `❌ *ОШИБКА*: номера ${missing.join(', ')} не имеют ставок!`);
+                return;
+            }
+            await payout(chatId, wins, sender);
+        } else {
+            await sendMessage(chatId, '❌ .победители 12 8 3 5 2 7');
+        }
         return;
     }
     
