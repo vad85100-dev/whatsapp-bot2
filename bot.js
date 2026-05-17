@@ -11,7 +11,7 @@ const BOSS = 'P14';
 const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель 🧿', 'Галина Дубль'];
 
 // ========== БЕЛЫЙ СПИСОК ГРУПП ==========
-const ALLOWED_GROUPS = ['тестовая система автоматизации','Колесо Фортуны, резерв'];
+const ALLOWED_GROUPS = ['тестовая система автоматизации'];
 
 // ========== БАЗА ДАННЫХ ==========
 let db = {};
@@ -30,7 +30,8 @@ let stats = {
     reportDate: new Date()
 };
 
-const MIN_BALANCE = -50000;
+const MIN_BALANCE_PLAYER = -2000;  // лимит минуса для обычных игроков
+// Админы могут уходить в любой минус (без ограничений)
 
 const emj = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
 
@@ -83,34 +84,49 @@ async function sendMessage(chatId, text) {
     }
 }
 
-function normalizeName(name) {
-    return name.toLowerCase().replace(/[~@_]/g, '').trim();
+function extractPhone(chatId) {
+    if (!chatId) return null;
+    const match = chatId.match(/(\d+)@/);
+    return match ? match[1] : null;
 }
 
-function findPlayerKey(name) {
-    const normalized = normalizeName(name);
+function findPlayerKeyByPhone(phone) {
+    if (!phone) return null;
+    return Object.keys(db).find(key => db[key]?.phone === phone);
+}
+
+function findPlayerKeyByName(name) {
+    const normalized = name.toLowerCase().replace(/[~@_]/g, '').trim();
     return Object.keys(db).find(key => {
-        const keyName = normalizeName(key.split(' (')[0]);
-        return keyName === normalized || keyName.includes(normalized) || normalized.includes(keyName);
+        const keyName = key.split(' (')[0].toLowerCase().replace(/[~@_]/g, '').trim();
+        return keyName === normalized;
     });
 }
 
-function ensurePlayer(name) {
-    let key = findPlayerKey(name);
+function findPlayerKey(name, phone) {
+    if (phone) {
+        const byPhone = findPlayerKeyByPhone(phone);
+        if (byPhone) return byPhone;
+    }
+    return findPlayerKeyByName(name);
+}
+
+function ensurePlayer(name, phone) {
+    let key = findPlayerKey(name, phone);
     if (!key) {
-        key = `${name} (auto)`;
-        db[key] = { balance: 0, games: 0, tickets: 0, wins: 0 };
+        key = `${name} (${phone || 'no-phone'})`;
+        db[key] = { balance: 0, games: 0, tickets: 0, wins: 0, phone: phone || null };
+    } else if (phone && !db[key].phone) {
+        db[key].phone = phone;
     }
     return key;
 }
 
 function isAdmin(sender) {
-    // Точное совпадение
     if (sender === BOSS) return true;
     if (ADMINS.includes(sender)) return true;
-    // Если не совпало, пробуем нормализовать (убрать эмодзи и спецсимволы)
-    const normalizedSender = normalizeName(sender);
-    return ADMINS.some(admin => normalizeName(admin) === normalizedSender);
+    const normalized = sender.toLowerCase().replace(/[~@_🧿]/g, '').trim();
+    return ADMINS.some(admin => admin.toLowerCase().replace(/[~@_🧿]/g, '').trim() === normalized);
 }
 
 function addGamePlay(playerKey, value) {
@@ -314,7 +330,8 @@ async function handleMessage(chatId, sender, text, groupName) {
         args = rawCmd.substring(spaceIdx + 1).trim();
     }
     
-    const playerKey = ensurePlayer(sender);
+    const phone = extractPhone(chatId);
+    const playerKey = ensurePlayer(sender, phone);
     const isAdminUser = isAdmin(sender);
     
     // ===== ПУБЛИЧНЫЕ КОМАНДЫ =====
@@ -370,7 +387,7 @@ async function handleMessage(chatId, sender, text, groupName) {
     
     // ===== СТАВКИ =====
     if (game.active && !game.paused && /^[\d,\/\\]+$/.test(cmd)) {
-        const betKey = findPlayerKey(sender);
+        const betKey = findPlayerKey(sender, phone);
         if (!betKey) {
             await sendMessage(chatId, `❌ Игрок "${sender}" не найден в базе`);
             return;
@@ -416,12 +433,14 @@ async function handleMessage(chatId, sender, text, groupName) {
         
         const currentBalance = db[betKey]?.balance || 0;
         const newBalance = currentBalance - totalCost;
-        if (newBalance < MIN_BALANCE) {
-            await sendMessage(chatId, `❌ *НЕЛЬЗЯ СТАВИТЬ*\n━━━━━━━━━━━━━━━━━━\n💰 Баланс: ${currentBalance}₽\n📉 Макс. минус: ${MIN_BALANCE}₽\n💡 Нужно ${totalCost - (currentBalance - MIN_BALANCE)}₽ до лимита`);
+        
+        // Проверка лимита минуса (для не-админов)
+        if (!isAdminUser && newBalance < MIN_BALANCE_PLAYER) {
+            await sendMessage(chatId, `❌ *НЕЛЬЗЯ СТАВИТЬ*\n━━━━━━━━━━━━━━━━━━\n💰 Баланс: ${currentBalance}₽\n📉 Макс. минус: ${MIN_BALANCE_PLAYER}₽\n💡 Нужно ${totalCost - (currentBalance - MIN_BALANCE_PLAYER)}₽ до лимита`);
             return;
         }
         
-        db[betKey].balance -= totalCost;
+        db[betKey].balance = newBalance;
         
         for (const bet of validBets) {
             if (!game.slots[bet.num]) game.slots[bet.num] = {};
@@ -475,7 +494,7 @@ async function handleMessage(chatId, sender, text, groupName) {
 🎲 *ЛОТ*
 .начать [стиль] [число]
 .список | .пауза лот
-.победители [1 2 3]
+.победители [1 2 3 4 5 6] — порядок мест!
 
 🐷 *КОПИЛКА*
 .копилка | .разбить
@@ -489,7 +508,7 @@ async function handleMessage(chatId, sender, text, groupName) {
     }
     
     if (cmd === '.принять' && args) {
-        const key = findPlayerKey(args);
+        const key = findPlayerKey(args, null);
         if (!key) { await sendMessage(chatId, `❌ Игрок "${args}" не найден`); return; }
         const current = db[key].balance || 0;
         if (current >= 0) {
@@ -502,7 +521,7 @@ async function handleMessage(chatId, sender, text, groupName) {
     }
     
     if (cmd === '.отказ' && args) {
-        const key = findPlayerKey(args);
+        const key = findPlayerKey(args, null);
         if (!key) { await sendMessage(chatId, `❌ Игрок "${args}" не найден`); return; }
         const current = db[key].balance || 0;
         if (current >= 0) {
@@ -519,7 +538,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         let name = parts[0].trim();
         let val = parseInt(parts[1].trim());
         if (isNaN(val)) { await sendMessage(chatId, '❌ Сумма не число'); return; }
-        let key = findPlayerKey(name);
+        let key = findPlayerKey(name, null);
         if (!key) {
             key = `${name} (manual)`;
             db[key] = { balance: 0, games: 0, tickets: 0, wins: 0 };
@@ -579,9 +598,9 @@ async function handleMessage(chatId, sender, text, groupName) {
         let name = parts[0].trim();
         let val = parseInt(parts[1]);
         if (isNaN(val)) { await sendMessage(chatId, '❌ Сумма не число'); return; }
-        let key = findPlayerKey(name);
+        let key = findPlayerKey(name, null);
         if (!key) {
-            key = `${name} (new)`;
+            key = `${name} (manual)`;
             db[key] = { balance: 0, games: 0, tickets: 0, wins: 0 };
         }
         const old = db[key].balance || 0;
@@ -590,7 +609,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
     if (cmd === '.удалить' && args) {
-        const key = findPlayerKey(args);
+        const key = findPlayerKey(args, null);
         if (!key) { await sendMessage(chatId, `❌ "${args}" не найден`); return; }
         delete db[key];
         await sendMessage(chatId, `🗑️ *УДАЛЁН*\n👤 ${args}`);
@@ -622,7 +641,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         }
         return;
     }
-        if (cmd === '.победители' && args && game.paused) {
+    if (cmd === '.победители' && args && game.paused) {
         const wins = args.match(/\d+/g);
         if (wins && wins.length) {
             // Проверяем, что номера победителей не повторяются
