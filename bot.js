@@ -65,9 +65,10 @@ const facts = ['🎲 Сегодня чаще выпадают нечётные',
 
 function normalizeName(name) {
     if (!name) return '';
-    // Убираем эмодзи и спецсимволы, НО СОХРАНЯЕМ ЦИФРЫ И БУКВЫ
-    return name.toLowerCase().replace(/[^a-zа-яё0-9]/g, '').trim();
+    // Только убираем регистр, НЕ удаляем эмодзи!
+    return name.toLowerCase().trim();
 }
+
 
 async function sendMessage(chatId, text) {
     try {
@@ -83,16 +84,15 @@ async function sendMessage(chatId, text) {
 
 function getPlayerKey(name) {
     if (!name) return null;
-    const normalizedSearch = normalizeName(name);
-    if (!normalizedSearch) return null;
+    const searchName = name.trim();
     
-    // Ищем игрока, у которого нормализованное имя совпадает
+    // Ищем точное совпадение (с учётом эмодзи, но без учёта регистра)
     return Object.keys(db).find(key => {
         const keyName = key.split(' (')[0];
-        const normalizedKey = normalizeName(keyName);
-        return normalizedKey === normalizedSearch;
+        return keyName.toLowerCase() === searchName.toLowerCase();
     });
 }
+
 function getDisplayName(playerKey) {
     if (!playerKey) return 'Неизвестно';
     return playerKey.split(' (')[0];
@@ -101,13 +101,12 @@ function getDisplayName(playerKey) {
 function ensurePlayer(name) {
     let key = getPlayerKey(name);
     if (!key) {
-        // Сохраняем ОРИГИНАЛЬНОЕ имя (с эмодзи), а не нормализованное
+        // Сохраняем ОРИГИНАЛЬНОЕ имя (как пришло от WhatsApp)
         key = `${name} (auto)`;
         db[key] = { balance: 0, games: 0, tickets: 0, wins: 0 };
     }
     return key;
 }
-
 
 
 
