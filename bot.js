@@ -7,7 +7,7 @@ app.use(express.json());
 const ID_INSTANCE = process.env.ID_INSTANCE;
 const API_TOKEN = process.env.API_TOKEN;
 const BOSS = 'P14';
-const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель 🧿', 'Галина Дубль',"Мама];
+const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель 🧿', 'Галина Дубль','Мама'];
 
 const ALLOWED_GROUPS = ['тестовая система автоматизации', 'Колесо Фортуны, резерв'];
 
