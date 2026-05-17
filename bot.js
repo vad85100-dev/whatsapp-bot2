@@ -8,7 +8,7 @@ app.use(express.json());
 const ID_INSTANCE = process.env.ID_INSTANCE;
 const API_TOKEN = process.env.API_TOKEN;
 const BOSS = 'P14';
-const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель', 'Галина Дубль'];
+const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель 🧿', 'Галина Дубль'];
 
 // ========== БЕЛЫЙ СПИСОК ГРУПП ==========
 const ALLOWED_GROUPS = [
