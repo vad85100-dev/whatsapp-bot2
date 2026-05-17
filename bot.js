@@ -90,14 +90,22 @@ function getPlayerKey(nameOrId) {
         return Object.keys(db).find(key => db[key]?.id === idNum);
     }
     
-    // Иначе ищем по точному имени (без нормализации, но без учёта регистра)
+    // Ищем по точному имени (без учёта регистра, но с эмодзи)
     const searchName = nameOrId.toLowerCase().trim();
-    return Object.keys(db).find(key => {
+    let exactMatch = Object.keys(db).find(key => {
         const keyName = key.split(' (')[0].toLowerCase().trim();
         return keyName === searchName;
     });
+    
+    if (exactMatch) return exactMatch;
+    
+    // Если не нашли, ищем по нормализованному имени (убираем эмодзи)
+    const normalizedSearch = nameOrId.toLowerCase().replace(/[^a-zа-яё0-9]/g, '').trim();
+    return Object.keys(db).find(key => {
+        const keyName = key.split(' (')[0].toLowerCase().replace(/[^a-zа-яё0-9]/g, '').trim();
+        return keyName === normalizedSearch;
+    });
 }
-
 function ensurePlayer(name) {
     let key = getPlayerKey(name);
     if (!key) {
@@ -123,11 +131,12 @@ function getDisplayName(playerKey) {
 
 function isAdmin(sender) {
     if (sender === BOSS) return true;
-    const normalizedSender = normalizeName(sender);
-    if (ADMINS.some(admin => normalizeName(admin) === normalizedSender)) return true;
+    // Нормализуем имя (убираем эмодзи, регистр)
+    const normalized = sender.toLowerCase().replace(/[^a-zа-яё0-9]/g, '').trim();
+    // Проверяем по списку ADMINS (тоже нормализуем)
+    if (ADMINS.some(admin => admin.toLowerCase().replace(/[^a-zа-яё0-9]/g, '').trim() === normalized)) return true;
     return false;
 }
-
 function addGamePlay(playerKey, value) {
     if (!db[playerKey]) return;
     if (!db[playerKey].games) db[playerKey].games = 0;
