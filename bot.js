@@ -437,10 +437,27 @@ async function handleMessage(chatId, sender, text, groupName) {
             }
         }
         
-        let allFilled = true;
+             // Проверяем, можно ли ещё сделать ставки
+        let anySlotAvailable = false;
         for (let i = 1; i <= game.max; i++) {
             const s = game.slots[i];
-            if (!s || (!s.full && !s.left && !s.right)) { allFilled = false; break; }
+            if (!s) {
+                // Номер полностью свободен
+                anySlotAvailable = true;
+                break;
+            } else if (!s.full) {
+                // Номер не занят целиком, проверяем половинки
+                if (!s.left || !s.right) {
+                    // Хотя бы одна половинка свободна
+                    anySlotAvailable = true;
+                    break;
+                }
+            }
+        }
+        
+        // Пауза включается только если нет ни одной доступной ставки
+        if (!anySlotAvailable) {
+            game.paused = true;
         }
         if (allFilled) game.paused = true;
         
