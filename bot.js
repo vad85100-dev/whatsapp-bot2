@@ -359,35 +359,26 @@ async function importData(chatId, jsonStr) {
     }
 }
 
-async function handleMessage(chatId, sender, text, groupName) {
-    let rawCmd = text.trim().toLowerCase();
-    let cmd = rawCmd;
-    let args = '';
-    const spaceIdx = rawCmd.indexOf(' ');
-    if (spaceIdx !== -1) {
-        cmd = rawCmd.substring(0, spaceIdx).trim();
-        args = rawCmd.substring(spaceIdx + 1).trim();
-    }
-    
-    const isAdminUser = isAdmin(sender);
-    const playerExists = getPlayerKey(sender) !== null;
-    
-    // ===== ПРОВЕРКА РЕГИСТРАЦИИ ДЛЯ ПУБЛИЧНЫХ КОМАНД =====
-    if (!playerExists && cmd.startsWith('/') && cmd !== '/регистрация') {
-        await sendMessage(chatId, `❌ *ДОСТУП ЗАПРЕЩЁН* ❌
-━━━━━━━━━━━━━━━━━━
-👤 ${sender}, вы не зарегистрированы в системе казино.
-
-✅ Для регистрации напишите:
-/регистрация
-
-После регистрации вам станут доступны все команды:
-/баланс, /статистика, /гадание и другие.
-
-💡 Регистрация бесплатна!`);
+       if (cmd === '.средства' && args && args.includes('=')) {
+        const parts = args.split('=');
+        let name = parts[0].trim();
+        let val = parseInt(parts[1].trim());
+        if (isNaN(val)) { await sendMessage(chatId, '❌ Сумма не число'); return; }
+        
+        let key = getPlayerKey(name);
+        if (!key) {
+            // Принудительное создание (только для корректировки)
+            key = `${name} (manual)`;
+            db[key] = { balance: 0, games: 0, tickets: 0, wins: 0 };
+            await sendMessage(chatId, `✨ *СОЗДАН НОВЫЙ ИГРОК*\n━━━━━━━━━━━━━━━━━━\n👤 ${name}\n💰 Баланс установлен: ${val}₽`);
+        }
+        
+        const old = db[key].balance || 0;
+        db[key].balance = val;
+        await sendMessage(chatId, `🟡 *КОРРЕКТИРОВКА БАЛАНСА*\n━━━━━━━━━━━━━━━━━━\n👤 ${name}\n📉 Было: ${old}₽\n📈 Стало: ${db[key].balance}₽`);
         return;
     }
-    
+
     // Если игрок не зарегистрирован и пишет обычное сообщение (не команду)
     if (!playerExists && !cmd.startsWith('/') && !cmd.startsWith('.') && cmd.length > 1) {
         await sendMessage(chatId, `👋 *Здравствуйте, ${sender}!* 👋
