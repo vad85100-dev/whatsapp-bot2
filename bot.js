@@ -434,11 +434,16 @@ async function handleMessage(chatId, sender, text, groupName) {
         const currentBalance = db[betKey]?.balance || 0;
         const newBalance = currentBalance - totalCost;
         
+        // ===== ЛИМИТ ОТКЛЮЧЁН ДЛЯ ВСЕХ =====
+        // (никакой проверки нет)
+        
+        db[betKey].balance = newBalance;
+        
         // Проверка лимита минуса (для не-админов)
-        if (!isAdminUser && newBalance < MIN_BALANCE_PLAYER) {
-            await sendMessage(chatId, `❌ *НЕЛЬЗЯ СТАВИТЬ*\n━━━━━━━━━━━━━━━━━━\n💰 Баланс: ${currentBalance}₽\n📉 Макс. минус: ${MIN_BALANCE_PLAYER}₽\n💡 Нужно ${totalCost - (currentBalance - MIN_BALANCE_PLAYER)}₽ до лимита`);
-            return;
-        }
+// Убираем лимит для всех (неограниченный минус)
+if (false) {
+    // Лимит отключён
+}
         
         db[betKey].balance = newBalance;
         
