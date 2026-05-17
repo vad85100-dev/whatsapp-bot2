@@ -9,12 +9,6 @@ const ID_INSTANCE = process.env.ID_INSTANCE;
 const API_TOKEN = process.env.API_TOKEN;
 const BOSS = 'P14';
 const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель', 'Галина Дубль'];
-// Получение номера телефона из чата
-function extractPhone(chatId) {
-    if (!chatId) return null;
-    const match = chatId.match(/(\d+)@/);
-    return match ? match[1] : null;
-}
 
 // ========== БЕЛЫЙ СПИСОК ГРУПП ==========
 const ALLOWED_GROUPS = [
@@ -67,7 +61,6 @@ const jokes = [
 const horos = ['♈ Овен: 3,7,11', '♌ Лев: 7,14,20', '♓ Рыбы: 9,13,16', '♊ Близнецы: 1,5,9'];
 const facts = ['🎲 Сегодня чаще выпадают нечётные', '🔥 70% игроков ставят на 7 и 8', '💰 Джекпот недели — 25 000₽'];
 
-// ========== ФУНКЦИЯ ОТПРАВКИ ==========
 async function sendMessage(chatId, text) {
     try {
         await axios.post(`https://api.green-api.com/waInstance${ID_INSTANCE}/sendMessage/${API_TOKEN}`, {
@@ -80,18 +73,11 @@ async function sendMessage(chatId, text) {
     }
 }
 
-// ========== ПОИСК ИГРОКА (без учёта регистра и лишних символов) ==========
 function normalizeName(name) {
     return name.toLowerCase().replace(/[~@_]/g, '').trim();
 }
 
-function findPlayerKey(name, phone) {
-    // Сначала ищем по номеру телефона
-    if (phone) {
-        const byPhone = Object.keys(db).find(key => db[key]?.phone === phone);
-        if (byPhone) return byPhone;
-    }
-    // Если не нашли по номеру, ищем по имени (старый способ)
+function findPlayerKey(name) {
     const normalized = normalizeName(name);
     return Object.keys(db).find(key => {
         const keyName = normalizeName(key.split(' (')[0]);
@@ -99,21 +85,11 @@ function findPlayerKey(name, phone) {
     });
 }
 
-function ensurePlayer(name, phone) {
-    let key = findPlayerKey(name, phone);
+function ensurePlayer(name) {
+    let key = findPlayerKey(name);
     if (!key) {
-        key = `${name} (${phone || 'no-phone'})`;
-        db[key] = { 
-            balance: 0, 
-            games: 0, 
-            tickets: 0, 
-            wins: 0,
-            phone: phone || null,
-            rawName: name
-        };
-    } else if (phone && !db[key].phone) {
-        // Обновляем номер телефона, если его не было
-        db[key].phone = phone;
+        key = `${name} (auto)`;
+        db[key] = { balance: 0, games: 0, tickets: 0, wins: 0 };
     }
     return key;
 }
@@ -136,7 +112,7 @@ function addGamePlay(playerKey, value) {
 function showPiggy(chatId) {
     let totalTickets = 0;
     for (let key in db) if (db[key]?.tickets) totalTickets += db[key].tickets;
-    sendMessage(chatId, `🐷 *КОПИЛКА СВИНКА* 🐷\n━━━━━━━━━━━━━━━━━━\n💰 Сумма в копилке: *${piggyBank}₽*\n🎟️ Всего мешочков: *${totalTickets}*`);
+    sendMessage(chatId, `🐷 *КОПИЛКА КАЗИНО* 🐷\n━━━━━━━━━━━━━━━━━━\n💰 Сумма в копилке: *${piggyBank}₽*\n🎟️ Всего мешочков: *${totalTickets}*`);
 }
 
 function breakPiggy(chatId) {
@@ -259,7 +235,6 @@ async function payout(chatId, winners) {
     game.slots = {};
 }
 
-// ========== ОБРАБОТЧИК СООБЩЕНИЙ ==========
 async function handleMessage(chatId, sender, text, groupName) {
     const rawCmd = text.trim().toLowerCase();
     let cmd = rawCmd;
@@ -270,33 +245,30 @@ async function handleMessage(chatId, sender, text, groupName) {
         args = rawCmd.substring(firstSpace + 1).trim();
     }
     
-    // Нормализуем имя отправителя для поиска в базе
-   const phone = extractPhone(chatId);
-const playerKey = ensurePlayer(sender, phone);
+    const playerKey = ensurePlayer(sender);
     const isAdminUser = isAdmin(sender);
     const isBoss = sender === BOSS;
     
-    // Список существующих команд
     const validCommands = [
         '/бот', '/баланс', '/статистика', '/гадание', '/новости', '/шутка', '/топ10', '/админы', '/банк',
         '.помощь', '.участники', '.топ10', '.копилка', '.разбить', '.умныйбот +', '.умныйбот -',
         '.начать', '.список', '.пауза лот', '.победители', '.средства', '.поиск', '.удалить'
     ];
     
-    // ========== ПУБЛИЧНЫЕ КОМАНДЫ ==========
+    // Публичные команды
     if (cmd === '/бот') {
-        await sendMessage(chatId, `🤖 *ПРИВЕТ, ИГРОК!* 🤖\n━━━━━━━━━━━━━━━━━━\n/баланс 💰 — мой баланс\n/статистика 📊 — моя статистика\n/банк 🏦 — баланс всех игроков\n/гадание 🔮 — счастливые числа\n/новости 📰 — свежие факты\n/шутка 😂 — поднять настроение\n/топ10 🏆 — богатейшие игроки\n/админы 👑 — список администрации`);
+        await sendMessage(chatId, `🤖 *ПРИВЕТ, ИГРОК!* 🤖\n━━━━━━━━━━━━━━━━━━\n/баланс 💰\n/статистика 📊\n/банк 🏦\n/гадание 🔮\n/новости 📰\n/шутка 😂\n/топ10 🏆\n/админы 👑`);
         return;
     }
     if (cmd === '/баланс') {
-        await sendMessage(chatId, `💰 *МОЙ БАЛАНС* 💰\n━━━━━━━━━━━━━━━━━━\n👤 *Игрок:* ${sender}\n💎 *Баланс:* ${db[playerKey]?.balance || 0}₽`);
+        await sendMessage(chatId, `💰 *МОЙ БАЛАНС* 💰\n━━━━━━━━━━━━━━━━━━\n👤 ${sender}\n💎 Баланс: ${db[playerKey]?.balance || 0}₽`);
         return;
     }
     if (cmd === '/статистика') {
         const games = db[playerKey]?.games || 0;
         const tickets = db[playerKey]?.tickets || 0;
         const wins = db[playerKey]?.wins || 0;
-        await sendMessage(chatId, `📊 *МОЯ СТАТИСТИКА* 📊\n━━━━━━━━━━━━━━━━━━\n👤 ${sender}\n🎲 Игр: ${games}\n🎟️ Меш.: ${tickets}\n🏆 Побед: ${wins}\n💰 Баланс: ${db[playerKey]?.balance || 0}₽`);
+        await sendMessage(chatId, `📊 *МОЯ СТАТИСТИКА* 📊\n━━━━━━━━━━━━━━━━━━\n🎲 Игр: ${games}\n🎟️ Меш.: ${tickets}\n🏆 Побед: ${wins}\n💰 Баланс: ${db[playerKey]?.balance || 0}₽`);
         return;
     }
     if (cmd === '/банк') {
@@ -311,7 +283,7 @@ const playerKey = ensurePlayer(sender, phone);
         return;
     }
     if (cmd === '/гадание') {
-        await sendMessage(chatId, `🔮 *ГАДАНИЕ* 🔮\n━━━━━━━━━━━━━━━━━━\n${horos[Math.floor(Math.random() * horos.length)]}\n\n🍀 *Пусть удача будет с тобой!*`);
+        await sendMessage(chatId, `🔮 *ГАДАНИЕ* 🔮\n━━━━━━━━━━━━━━━━━━\n${horos[Math.floor(Math.random() * horos.length)]}`);
         return;
     }
     if (cmd === '/новости') {
@@ -325,25 +297,23 @@ const playerKey = ensurePlayer(sender, phone);
     if (cmd === '/топ10') {
         const top = Object.entries(db).sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0)).slice(0, 10);
         if (!top.length) { await sendMessage(chatId, '🏆 ТОП-10\nНет данных'); return; }
-        let out = '🏆 *ТОП-10 БОГАТЕЙШИХ* 🏆\n━━━━━━━━━━━━━━━━━━\n';
+        let out = '🏆 *ТОП-10* 🏆\n━━━━━━━━━━━━━━━━━━\n';
         top.forEach(([n, d], i) => out += `${i+1}. ${n.split(' (')[0]} — ${d.balance}₽\n`);
         await sendMessage(chatId, out);
         return;
     }
     if (cmd === '/админы') {
-        await sendMessage(chatId, `👑 *АДМИНИСТРАЦИЯ* 👑\n━━━━━━━━━━━━━━━━━━\n${BOSS} (владелец)\n${ADMINS.join('\n')}`);
+        await sendMessage(chatId, `👑 *АДМИНИСТРАЦИЯ* 👑\n━━━━━━━━━━━━━━━━━━\n${BOSS}\n${ADMINS.join('\n')}`);
         return;
     }
     
-        // ========== СТАВКИ ==========
+    // СТАВКИ
     if (game.active && !game.paused) {
         const isBet = /^[\d,\/\\]+$/.test(cmd);
         if (isBet) {
-            // НАХОДИМ ИГРОКА ПО НОРМАЛИЗОВАННОМУ ИМЕНИ
-const phone = extractPhone(chatId);
-const playerKey = findPlayerKey(sender, phone);
+            const playerKey = findPlayerKey(sender);
             if (!playerKey) {
-                await sendMessage(chatId, `❌ *ОШИБКА*\n━━━━━━━━━━━━━━━━━━\nИгрок "${sender}" не найден в базе.\nПополните баланс через админа: .средства ${sender} + сумма`);
+                await sendMessage(chatId, `❌ Игрок "${sender}" не найден в базе.`);
                 return;
             }
             
@@ -376,7 +346,7 @@ const playerKey = findPlayerKey(sender, phone);
                     continue;
                 }
                 if (type === 'half' && slot.left && slot.right) {
-                    errors.push(`❌ Номер ${num} полностью занят (обе половинки заняты)`);
+                    errors.push(`❌ Номер ${num} полностью занят`);
                     continue;
                 }
                 
@@ -385,15 +355,13 @@ const playerKey = findPlayerKey(sender, phone);
             }
             
             if (errors.length > 0) {
-                await sendMessage(chatId, `❌ *ОШИБКИ В НОМЕРКАХ*\n━━━━━━━━━━━━━━━━━━\n${errors.join('\n')}`);
+                await sendMessage(chatId, `❌ *ОШИБКИ В СТАВКАХ*\n${errors.join('\n')}`);
                 return;
             }
             
-            if (validBets.length === 0) return;
-            
             const currentBalance = db[playerKey]?.balance || 0;
             if (currentBalance < totalCost) {
-                await sendMessage(chatId, `❌ *НЕ ХВАТАЕТ ${totalCost}₽*\n━━━━━━━━━━━━━━━━━━\n💰 Ваш баланс: ${currentBalance}₽\n💡 Пополните баланс: .средства ${sender} + сумма`);
+                await sendMessage(chatId, `❌ *НЕ ХВАТАЕТ ${totalCost}₽*\n💰 Ваш баланс: ${currentBalance}₽`);
                 return;
             }
             
@@ -415,32 +383,30 @@ const playerKey = findPlayerKey(sender, phone);
             }
             if (allFilled) game.paused = true;
             
-            let successMsg = `✅ *НОМЕРОК ПРИНЯТ*\n━━━━━━━━━━━━━━━━━━\n`;
+            let successMsg = `✅ *СТАВКИ ПРИНЯТЫ*\n━━━━━━━━━━━━━━━━━━\n`;
             for (const bet of validBets) {
                 const price = bet.type === 'full' ? p.full : p.half;
                 successMsg += `🎲 Номер ${bet.num}${bet.type === 'half' ? '/' : ''} — ${price}₽\n`;
             }
-            successMsg += `\n💰 Всего списано: ${totalCost}₽\n━━━━━━━━━━━━━━━━━━\n\n${renderLot()}`;
+            successMsg += `\n💰 Всего списано: ${totalCost}₽\n\n${renderLot()}`;
             await sendMessage(chatId, successMsg);
             return;
         }
     }
     
-    // ========== АДМИН-КОМАНДЫ ==========
+    // АДМИН-КОМАНДЫ
     if (!isAdminUser) {
         if (cmd.startsWith('/') && !validCommands.includes(cmd)) {
-            await sendMessage(chatId, `❌ *ОШИБКА! ТАКОЙ КОМАНДЫ НЕ СУЩЕСТВУЕТ*\n━━━━━━━━━━━━━━━━━━\n💡 Введи /бот для списка команд.`);
+            await sendMessage(chatId, `❌ *НЕТ ТАКОЙ КОМАНДЫ*\n💡 Введи /бот для списка команд.`);
         }
         return;
     }
     
     if (cmd === '.помощь') {
-        await sendMessage(chatId, `🔥👑 *𝑺𝒕𝒂𝒇𝒇 𝑷𝒂𝒏𝒆𝒍* 👑🔥\n━━━━━━━━━━━━━━━━━━━━━
+        await sendMessage(chatId, `🔥👑 *TITAN CASINO* 👑🔥
+━━━━━━━━━━━━━━━━━━━━━
 📌 *ОСНОВНЫЕ*
-.участники — список игроков
-.поиск [имя] — найти игрока
-.топ10 — богатейшие
-.удалить [имя] — удалить игрока
+.участники | .поиск | .топ10 | .удалить
 
 💰 *ФИНАНСЫ*
 .средства [имя] +[сумма]
@@ -448,74 +414,19 @@ const playerKey = findPlayerKey(sender, phone);
 
 🎲 *ЛОТ*
 .начать [стиль] [число]
-.список — показать лот
-.пауза лот — заморозить
+.список | .пауза лот
 .победители [номера]
 
 🐷 *КОПИЛКА*
-.копилка — показать сумму
-.разбить — поделить копилку
+.копилка | .разбить
 
 🤖 *УМНЫЙ БОТ*
-.умныйбот + — включить
-.умныйбот - — выключить
+.умныйбот + | .умныйбот -
 
 🎮 *ДЛЯ ИГРОКОВ*
-/бот — меню игрока
-━━━━━━━━━━━━━━━━━━━━━
-💡 Ставки: 5 — весь | 5/ — половинка | 5,3,2/ — несколько`);
+/бот | /баланс | /статистика | /банк | /гадание | /новости | /шутка | /топ10 | /админы`);
         return;
     }
-
-    // ========== СИСТЕМНЫЕ КОМАНДЫ ДЛЯ БОССА P14 ==========
-    if (isBoss) {
-        if (cmd === '.удалить базу') {
-            db = {};
-            game = { active: false, paused: false, style: 'феникс', slots: {}, max: 0 };
-            piggyBank = 0;
-            dailyPayoutDone = false;
-            smartBot = false;
-            await sendMessage(chatId, `🗑️ *БАЗА УДАЛЕНА* 🗑️\n━━━━━━━━━━━━━━━━━━\n✅ Все данные игроков удалены.\n✅ Копилка обнулена.\n✅ Текущий лот сброшен.\n✅ Умный бот выключен.\n\n💡 Бот полностью очищен.`);
-            console.log(`🔥 БОСС ${BOSS}: выполнена команда .удалить базу`);
-            return;
-        }
-        
-        if (cmd === '.ребут') {
-            // Сохраняем старую базу для отчёта
-            const oldDbSize = Object.keys(db).length;
-            const oldPiggy = piggyBank;
-            const oldGameActive = game.active;
-            
-            // Полный сброс
-            db = {};
-            game = { active: false, paused: false, style: 'феникс', slots: {}, max: 0 };
-            piggyBank = 0;
-            dailyPayoutDone = false;
-            smartBot = false;
-            
-            // Отчёт в консоль
-            console.log(`🔄 ========== РЕБУТ БОТА ==========`);
-            console.log(`👑 Выполнил: ${BOSS}`);
-            console.log(`📊 Удалено игроков: ${oldDbSize}`);
-            console.log(`🐷 Обнулена копилка: ${oldPiggy}₽`);
-            console.log(`🎲 Был активен лот: ${oldGameActive ? 'да' : 'нет'}`);
-            console.log(`✅ Статус: ПОЛНОСТЬЮ ВОССТАНОВЛЕН`);
-            console.log(`🔄 =================================`);
-            
-            await sendMessage(chatId, `🔄 *РЕБУТ ВЫПОЛНЕН* 🔄\n━━━━━━━━━━━━━━━━━━
-📊 Удалено игроков: *${oldDbSize}*
-🐷 Копилка: ${oldPiggy}₽ → 0₽
-🎲 Лот: ${oldGameActive ? 'был активен (сброшен)' : 'не был активен'}
-🤖 Умный бот: выключен
-✅ Копилка обнулена
-✅ Все данные сброшены
-
-━━━━━━━━━━━━━━━━━━
-💡 *Бот полностью восстановлен до заводских настроек*`);
-            return;
-        }
-    }
-    
     if (cmd === '.умныйбот +') {
         smartBot = true;
         await sendMessage(chatId, '🧠 *УМНЫЙ БОТ ВКЛЮЧЁН*');
@@ -540,9 +451,7 @@ const playerKey = findPlayerKey(sender, phone);
         let out = '👥 *УЧАСТНИКИ*\n━━━━━━━━━━━━━━━━━━\n';
         list.forEach(([n, d], i) => {
             const name = n.split(' (')[0];
-            const games = d.games || 0;
-            const tickets = d.tickets || 0;
-            out += `${i+1}. ${name}\n   🎲 Игр: ${games} | 🎟️ Меш.: ${tickets} | 💰 ${d.balance}₽\n`;
+            out += `${i+1}. ${name} — ${d.balance}₽\n`;
         });
         await sendMessage(chatId, out);
         return;
@@ -563,7 +472,7 @@ const playerKey = findPlayerKey(sender, phone);
         await sendMessage(chatId, out);
         return;
     }
-       if (cmd === '.средства' && args) {
+    if (cmd === '.средства' && args) {
         const op = args.includes('+') ? '+' : (args.includes('-') ? '-' : null);
         if (!op) return;
         const parts = args.split(op);
@@ -571,30 +480,24 @@ const playerKey = findPlayerKey(sender, phone);
         let val = parseInt(parts[1]);
         if (isNaN(val)) { await sendMessage(chatId, '❌ Сумма не число'); return; }
         
-        // Ищем по нормализованному имени
-let key = findPlayerKey(name, null);
+        let key = findPlayerKey(name);
         if (!key) {
             key = `${name} (manual)`;
             db[key] = { balance: 0, games: 0, tickets: 0, wins: 0 };
         }
         const old = db[key].balance || 0;
         db[key].balance = op === '+' ? old + val : old - val;
-        await sendMessage(chatId, `${op === '+' ? '🟢 НАЧИСЛЕНО' : '🔴 СПИСАНО'} ${key.split(' (')[0]}: ${old} → ${db[key].balance}₽`);
+        await sendMessage(chatId, `${op === '+' ? '🟢 НАЧИСЛЕНО' : '🔴 СПИСАНО'} ${name}: ${old} → ${db[key].balance}₽`);
         return;
     }
-      if (cmd === '.удалить' && args && isAdminUser) {
+    if (cmd === '.удалить' && args) {
         const key = findPlayerKey(args);
         if (!key) {
-            await sendMessage(chatId, `❌ Игрок "${args}" не найден в базе`);
+            await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
             return;
         }
         delete db[key];
-        await sendMessage(chatId, `🗑️ *ИГРОК УДАЛЁН*\n━━━━━━━━━━━━━━━━━━\n👤 ${key.split(' (')[0]} удалён из базы.`);
-        return;
-    }
-       if (cmd === '.очистить базу' && isBoss) {
-        db = {};
-        await sendMessage(chatId, '🗑️ *БАЗА ОЧИЩЕНА*\n━━━━━━━━━━━━━━━━━━\nВсе данные удалены.');
+        await sendMessage(chatId, `🗑️ *ИГРОК УДАЛЁН*\n👤 ${args} удалён из базы.`);
         return;
     }
     if (cmd === '.начать' && args) {
@@ -605,7 +508,7 @@ let key = findPlayerKey(name, null);
             game = { active: true, paused: false, style: styleName, max: number, slots: {} };
             await sendMessage(chatId, renderLot());
         } else {
-            await sendMessage(chatId, `❌ *ОШИБКА*\nФормат: .начать [стиль] [число]\nПример: .начать феникс 10`);
+            await sendMessage(chatId, `❌ .начать [стиль] [число]\nПример: .начать феникс 10`);
         }
         return;
     }
@@ -615,7 +518,12 @@ let key = findPlayerKey(name, null);
         return;
     }
     if (cmd === '.пауза лот') {
-        if (game.active) { game.paused = true; await sendMessage(chatId, renderLot()); }
+        if (game.active) {
+            game.paused = true;
+            await sendMessage(chatId, `⏸️ *ЛОТ НА ПАУЗЕ*\n\n${renderLot()}`);
+        } else {
+            await sendMessage(chatId, '❌ Нет активного лота');
+        }
         return;
     }
     if (cmd === '.победители' && args && game.paused) {
@@ -628,19 +536,18 @@ let key = findPlayerKey(name, null);
         return;
     }
     
-    // Умный бот
+    // УМНЫЙ БОТ
     if (smartBot && !cmd.startsWith('.') && !cmd.startsWith('/')) {
-        const replies = ['🎲 Удачи в лоте!', '🔥 Ставки сделаны?', '💰 Фарта тебе!', '🍀 Сегодня твой день!', '💎 Джекпот уже близко!'];
+        const replies = ['🎲 Удачи в лоте!', '🔥 Ставки сделаны?', '💰 Фарта тебе!', '🍀 Сегодня твой день!'];
         await sendMessage(chatId, replies[Math.floor(Math.random() * replies.length)]);
         return;
     }
     
-    if (cmd.startsWith('.') && !validCommands.includes(cmd) && cmd !== '.очистить базу') {
-        await sendMessage(chatId, `❌ *ОШИБКА! ТАКОЙ КОМАНДЫ НЕ СУЩЕСТВУЕТ*\n💡 Введи .помощь для списка команд.`);
+    if (cmd.startsWith('.') && !validCommands.includes(cmd)) {
+        await sendMessage(chatId, `❌ *НЕТ ТАКОЙ КОМАНДЫ*\n💡 Введи .помощь для списка команд.`);
     }
 }
 
-// ========== ВЕБХУК ==========
 app.post('/webhook', async (req, res) => {
     const webhook = req.body;
     console.log('📩 Получен вебхук');
@@ -666,7 +573,6 @@ app.post('/webhook', async (req, res) => {
     res.status(200).send('OK');
 });
 
-// ========== ЗАПУСК ==========
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`✅ Бот запущен на порту ${PORT}`);
