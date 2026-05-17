@@ -418,12 +418,15 @@ async function handleMessage(chatId, sender, text, groupName) {
         }
         
         const currentBalance = db[playerKey]?.balance || 0;
-        if (currentBalance < totalCost) {
-            await sendMessage(chatId, `❌ *НЕ ХВАТАЕТ ${totalCost}₽*\n💰 Ваш баланс: ${currentBalance}₽`);
+        const newBalance = currentBalance - totalCost;
+        
+        // Лимит минуса -2000 для всех
+        if (newBalance < -2000) {
+            await sendMessage(chatId, `❌ *НЕЛЬЗЯ СТАВИТЬ*\n━━━━━━━━━━━━━━━━━━\n💰 Баланс: ${currentBalance}₽\n📉 Макс. минус: -2000₽\n💡 Нужно ${totalCost - (currentBalance + 2000)}₽ до лимита`);
             return;
         }
         
-        db[playerKey].balance -= totalCost;
+        db[playerKey].balance = newBalance;
         
         for (const bet of validBets) {
             if (!game.slots[bet.num]) game.slots[bet.num] = {};
