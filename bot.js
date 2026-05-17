@@ -77,8 +77,12 @@ async function sendMessage(chatId, text) {
 
 function getPlayerKey(name) {
     if (!name) return null;
-    // Точное сравнение имени (как в базе)
-    return Object.keys(db).find(key => key.split(' (')[0] === name);
+    // Нормализуем искомое имя
+    const normalizedSearch = name.toLowerCase().replace(/[~@_🧿]/g, '').trim();
+    return Object.keys(db).find(key => {
+        const keyName = key.split(' (')[0].toLowerCase().replace(/[~@_🧿]/g, '').trim();
+        return keyName === normalizedSearch;
+    });
 }
 
 function getDisplayName(playerKey) {
@@ -89,9 +93,9 @@ function getDisplayName(playerKey) {
 function isAdmin(sender) {
     if (sender === BOSS) return true;
     if (ADMINS.includes(sender)) return true;
-    return false;
+    const normalized = sender.toLowerCase().replace(/[~@_🧿]/g, '').trim();
+    return ADMINS.some(admin => admin.toLowerCase().replace(/[~@_🧿]/g, '').trim() === normalized);
 }
-
 function addGamePlay(playerKey, value) {
     if (!db[playerKey]) return;
     if (!db[playerKey].games) db[playerKey].games = 0;
