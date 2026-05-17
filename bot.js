@@ -334,6 +334,22 @@ const playerKey = ensurePlayer(sender, phone);
         await sendMessage(chatId, `👑 *АДМИНИСТРАЦИЯ* 👑\n━━━━━━━━━━━━━━━━━━\n${BOSS} (владелец)\n${ADMINS.join('\n')}`);
         return;
     }
+
+        if (cmd === '/спор' && args) {
+        const reason = args;
+        // Выбираем случайного админа из списка (исключая босса, если хочешь)
+        const allAdmins = [BOSS, ...ADMINS];
+        const randomAdmin = allAdmins[Math.floor(Math.random() * allAdmins.length)];
+        
+        await sendMessage(chatId, `🚨 *СПОР ВЫЗВАН!* 🚨\n━━━━━━━━━━━━━━━━━━
+👤 *Игрок:* ${sender}
+📝 *Причина:* ${reason}
+👑 *Ответственный админ:* @~${randomAdmin}
+
+━━━━━━━━━━━━━━━━━━
+💡 Администратор будет разбирать ситуацию.`);
+        return;
+    }
     
         // ========== СТАВКИ ==========
     if (game.active && !game.paused) {
