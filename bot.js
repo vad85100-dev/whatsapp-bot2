@@ -65,8 +65,8 @@ const facts = ['🎲 Сегодня чаще выпадают нечётные',
 
 function normalizeName(name) {
     if (!name) return '';
-    // Только убираем регистр, НЕ удаляем эмодзи!
-    return name.toLowerCase().trim();
+    // Убираем тильду в начале и эмодзи, НО НЕ УДАЛЯЕМ ЦИФРЫ
+    return name.toLowerCase().replace(/^~/, '').replace(/[^a-zа-яё0-9]/g, '').trim();
 }
 
 
@@ -711,14 +711,11 @@ async function handleMessage(chatId, sender, text, groupName) {
         }
         return;
     }
-    if (cmd === '.победители' && args && game.paused) {
+     if (cmd === '.победители' && args && game.paused) {
         const wins = args.match(/\d+/g);
         if (wins && wins.length) {
-            const uniqueWins = [...new Set(wins)];
-            if (uniqueWins.length !== wins.length) {
-                await sendMessage(chatId, `❌ *ОШИБКА*: номера победителей не должны повторяться!`);
-                return;
-            }
+            // Разрешаем повторы номеров (один игрок может выиграть несколько мест)
+            // Проверяем только, что все номера есть в лоте (кто-то их занял)
             const missing = wins.filter(n => !game.slots[n] || (!game.slots[n].full && !game.slots[n].left && !game.slots[n].right));
             if (missing.length > 0) {
                 await sendMessage(chatId, `❌ *ОШИБКА*: номера ${missing.join(', ')} не имеют ставок!`);
