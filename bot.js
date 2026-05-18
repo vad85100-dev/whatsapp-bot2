@@ -652,11 +652,9 @@ async function handleMessage(chatId, sender, text, groupName) {
 
 💰 *ФИНАНСЫ*
 .средства [имя или ID] +[сумма]
-.средства [имя или ID] -[сумма]
-.средства = [имя или ID] [сумма]
 
 🎟️ *МЕШОЧКИ*
-.мешочки + [имя] | .мешочки - [имя] | .мешочки = [имя] [число]
+.мешочки [имя или ID] + [сумма]
 
 💳 *ДОЛГИ*
 .принять [имя или ID]
@@ -672,9 +670,9 @@ async function handleMessage(chatId, sender, text, groupName) {
 .разбить
 
 📊 *ОТЧЁТ*
-.отчёт — полная статистика
+.отчет — полная статистика от запуска до команды отчета
 
-📦 *БЭКАП*
+📦 *ВОССТАНОВЛЕНИЕ (для сис.админа)*
 .экспорт — выгрузить все данные
 .вставить [JSON] — восстановить из бэкапа
 
@@ -719,10 +717,32 @@ async function handleMessage(chatId, sender, text, groupName) {
     }
 
     // ===== МЕШОЧКИ =====
-    if (cmd === '.мешочки' && args && isAdminUser) {
-        const parts = args.split(/\s+/);
-        const op = parts[0];
-        const nameOrId = parts.slice(1).join(' ');
+       if (cmd === '.мешочки' && args && isAdminUser) {
+        const parts = args.trim().split(/\s+/);
+        let op = '';
+        let nameOrId = '';
+        let val = 0;
+        
+        // Определяем порядок: "15 + 2" или "+ 15 2" или "Фаягуль + 2"
+        if (parts.length >= 3) {
+            // Если первый аргумент — число или имя, а второй — оператор
+            if (parts[1] === '+' || parts[1] === '-' || parts[1] === '=') {
+                nameOrId = parts[0];
+                op = parts[1];
+                val = parseInt(parts[2]);
+            } 
+            // Если первый аргумент — оператор
+            else if (parts[0] === '+' || parts[0] === '-' || parts[0] === '=') {
+                op = parts[0];
+                nameOrId = parts[1];
+                val = parseInt(parts[2]);
+            }
+        }
+        
+        if (!op || isNaN(val)) {
+            await sendMessage(chatId, '❌ .мешочки [имя или ID] + [число] | .мешочки + [имя] [число] | .мешочки [имя] = [число]');
+            return;
+        }
         
         let key = getPlayerKey(nameOrId);
         if (!key) {
@@ -734,22 +754,13 @@ async function handleMessage(chatId, sender, text, groupName) {
         let newTickets = currentTickets;
         
         if (op === '+') {
-            const val = parseInt(parts[1]);
-            if (isNaN(val)) { await sendMessage(chatId, '❌ Сумма не число'); return; }
             newTickets = currentTickets + val;
         } else if (op === '-') {
-            const val = parseInt(parts[1]);
-            if (isNaN(val)) { await sendMessage(chatId, '❌ Сумма не число'); return; }
             newTickets = currentTickets - val;
             if (newTickets < 0) newTickets = 0;
         } else if (op === '=') {
-            const val = parseInt(parts[1]);
-            if (isNaN(val)) { await sendMessage(chatId, '❌ Сумма не число'); return; }
             newTickets = val;
             if (newTickets < 0) newTickets = 0;
-        } else {
-            await sendMessage(chatId, '❌ .мешочки + [имя] | .мешочки - [имя] | .мешочки = [имя] [число]');
-            return;
         }
         
         db[key].tickets = newTickets;
@@ -890,7 +901,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
 
-    if (cmd === '.отчёт') {
+    if (cmd === '.отчет') {
         await generateReport(chatId);
         await sendMessage(chatId, `📋 *ОТЧЁТ СФОРМИРОВАН*\n━━━━━━━━━━━━━━━━━━\nНовый период начат.`);
         return;
@@ -979,12 +990,12 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
     
-    if (cmd === '.пауза лот') {
+      if (cmd === '.пауза лот') {
         if (game.active) {
             game.paused = true;
-            await sendMessage(chatId, `⏸️ *ЛОТ НА ПАУЗЕ*\n\n${renderLot()}`);
+            await sendMessage(chatId, `⏸️ *ЛОТ НА ПАУЗЕ* ⏸️\n\n${renderLot()}`);
         } else {
-            await sendMessage(chatId, '❌ Нет лота');
+            await sendMessage(chatId, '❌ Нет активного лота');
         }
         return;
     }
