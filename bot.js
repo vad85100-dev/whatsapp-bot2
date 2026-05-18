@@ -181,7 +181,7 @@ function renderLot() {
         { place: 6, prize: 0 }
     ];
 
-    let res = `${s.h}\n━━━━━━━━━━━━━━━━━━\n🏆 *ПРИЗЫ* 🏆\n`;
+    let res = `━━━━━━━━━━━━━━━━━━\n🏆 *ПРИЗЫ* 🏆\n`;
     for (let i = 0; i < 6; i++) {
         if (prizes[i].prize > 0) {
             res += `${prizes[i].place} место: ${prizes[i].prize}₽\n`;
@@ -215,7 +215,6 @@ function renderLot() {
     if (game.paused) res += `\n⏸️ *ПАУЗА* ⏸️`;
     return res;
 }
-
 async function payout(chatId, winners, adminName) {
     const p = styles[game.style].price;
     const prizes = [
@@ -838,15 +837,15 @@ async function handleMessage(chatId, sender, text, groupName) {
         await sendMessage(chatId, `🗑️ *УДАЛЁН*\n👤 ${args}`);
         return;
     }
-    if (cmd === '.начать' && args) {
-        const parts = args.split(/\s+/);
-        const num = parseInt(parts[parts.length - 1]);
-        const style = parts.slice(0, -1).join(' ').toLowerCase();
-        if (styles[style] && !isNaN(num) && num > 0) {
-            game = { active: true, paused: false, style: style, max: num, slots: {} };
+       if (cmd === '.начать' && args) {
+        const styleName = args.trim().toLowerCase();
+        if (styles[styleName]) {
+            // Фиксированное максимальное число для стиля (из стиля)
+            const maxNumbers = styleName === 'обезьянка' ? 12 : 10; // по умолчанию 10
+            game = { active: true, paused: false, style: styleName, max: maxNumbers, slots: {} };
             await sendMessage(chatId, renderLot());
         } else {
-            await sendMessage(chatId, `❌ .начать [стиль] [число]\nПример: .начать обезьянка 10`);
+            await sendMessage(chatId, `❌ *ОШИБКА*\n━━━━━━━━━━━━━━━━━━\nСтиль "${styleName}" не найден.\nДоступные стили: ${Object.keys(styles).join(', ')}`);
         }
         return;
     }
