@@ -388,9 +388,26 @@ async function generateReport(chatId) {
     }
     if (!adminStats) adminStats = '\nНет данных';
 
+    // Преобразуем дату в читаемый вид
+    let periodText = 'неизвестно';
+    if (stats.reportDate) {
+        try {
+            const reportDate = new Date(stats.reportDate);
+            if (!isNaN(reportDate.getTime())) {
+                periodText = reportDate.toLocaleString('ru-RU', {
+                    day: 'numeric',
+                    month: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+        } catch(e) {}
+    }
+
     const generalReport = `📊 *ОТЧЕТ: ОБЩАЯ СТАТИСТИКА* 📊
 ━━━━━━━━━━━━━━━━━━
-📅 *Период:* ${stats.reportDate?.toLocaleString() || 'неизвестно'} — сейчас
+📅 *Период:* ${periodText} — сейчас
 ━━━━━━━━━━━━━━━━━━
 🎲 *Всего лотов:* ${stats.totalLots || 0}
 🎯 *Сыграно игр:* ${(stats.totalGames || 0).toFixed(1)}
@@ -407,10 +424,9 @@ async function generateReport(chatId) {
         totalLots: 0,
         adminLots: {},
         totalGames: 0,
-        reportDate: new Date()
+        reportDate: new Date().toISOString()
     };
 }
-
 async function exportData(chatId) {
     const exportObj = {
         version: '1.0',
