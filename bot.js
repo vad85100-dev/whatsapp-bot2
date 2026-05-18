@@ -26,32 +26,12 @@ let stats = {
 
 const emj = ['0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
 
-const prices = {
-    феникс: { full: 2000, half: 1000 },
-    роман: { full: 1500, half: 750 },
-    париж: { full: 2500, half: 1250 },
-    сказочный: { full: 1800, half: 900 },
-    джульетта: { full: 2200, half: 1100 },
-    'лунная гладь': { full: 3000, half: 1500 },
-    'драгон лор': { full: 5000, half: 2500 },
-    дримленд: { full: 1700, half: 850 },
-    'кисло-сладкий': { full: 1900, half: 950 },
-    'удачный гном': { full: 1300, half: 650 },
-    серьезный: { full: 4000, half: 2000 }
-};
-
 const styles = {
-    феникс: { h: '🔥🐦‍🔥 *ФЕНИКС* 🐦‍🔥🔥\n💎 ЦЕНА: 2000₽ / 1000₽ 💎', i: '🔥' },
-    роман: { h: '🌹💖 *РОМАН* 💖🌹\n💎 ЦЕНА: 1500₽ / 750₽ 💎', i: '💖' },
-    париж: { h: '🗼🥐 *ПАРИЖ* 🥐🗼\n💎 ЦЕНА: 2500₽ / 1250₽ 💎', i: '🗼' },
-    сказочный: { h: '🧚‍♀️✨ *СКАЗОЧНЫЙ* ✨🧚‍♂️\n💎 ЦЕНА: 1800₽ / 900₽ 💎', i: '✨' },
-    джульетта: { h: '💋🌙 *ДЖУЛЬЕТТА* 🌙💋\n💎 ЦЕНА: 2200₽ / 1100₽ 💎', i: '💋' },
-    'лунная гладь': { h: '🌕🌊 *ЛУННАЯ ГЛАДЬ* 🌊🌕\n💎 ЦЕНА: 3000₽ / 1500₽ 💎', i: '🌕' },
-    'драгон лор': { h: '🐉👑 *ДРАГОН ЛОР* 👑🐉\n💎 ЦЕНА: 5000₽ / 2500₽ 💎', i: '🐉' },
-    дримленд: { h: '☁️🌈 *ДРИМЛЕНД* 🌈☁️\n💎 ЦЕНА: 1700₽ / 850₽ 💎', i: '🌈' },
-    'кисло-сладкий': { h: '🍋🍬 *КИСЛО-СЛАДКИЙ* 🍬🍋\n💎 ЦЕНА: 1900₽ / 950₽ 💎', i: '🍬' },
-    'удачный гном': { h: '🍀🧙 *УДАЧНЫЙ ГНОМ* 🧙🍀\n💎 ЦЕНА: 1300₽ / 650₽ 💎', i: '🍀' },
-    серьезный: { h: '🎩💼 *СЕРЬЕЗНЫЙ* 💼🎩\n💎 ЦЕНА: 4000₽ / 2000₽ 💎', i: '🎩' }
+    обезьянка: { 
+        h: '🦥🦥🦥1️⃣0️⃣0️⃣0️⃣➖5️⃣0️⃣0️⃣🦥🦥🦥\n🐿️🐿️🐿️🐿️🐿️🐿️🐿️🐿️🐿️\n🪵1️⃣🪵🪵1️⃣2️⃣0️⃣0️⃣🪵\n🦥2️⃣🦥🦥8️⃣0️⃣0️⃣🦥\n🌰3️⃣🌰🌰1️⃣0️⃣0️⃣0️⃣🌰\n🐿️4️⃣🐿️🐿️3️⃣🌰🌰🌰\n🪵5️⃣🪵🪵1️⃣0️⃣0️⃣0️⃣🪵\n🦥6️⃣🦥🦥5️⃣0️⃣0️⃣🦥\n🌰🌰🌰🌰🌰🌰🌰🌰🌰\n1️⃣\n2️⃣\n3️⃣\n4️⃣\n5️⃣\n6️⃣\n7️⃣\n8️⃣\n9️⃣\n🔟', 
+        i: '🦥',
+        price: { full: 1000, half: 500 }
+    }
 };
 
 const jokes = [
@@ -79,6 +59,11 @@ function normalizeName(name) {
     if (!name) return '';
     // Ничего не удаляем, только приводим к нижнему регистру для сравнения
     return name.toLowerCase().trim();
+}
+
+function getDisplayNameNoId(playerKey) {
+    if (!playerKey) return 'Неизвестно';
+    return playerKey.split(' (')[0];
 }
 
 function getPlayerKey(nameOrId) {
@@ -195,36 +180,46 @@ function breakPiggy(chatId) {
 
 function renderLot() {
     const s = styles[game.style];
-    const p = prices[game.style];
+    const p = s.price;
     
     const prizes = [
-        { place: 1, mult: 3 },
-        { place: 2, mult: 2 },
-        { place: 3, mult: 1.5 },
-        { place: 4, mult: 1 },
-        { place: 5, mult: 0.8 },
-        { place: 6, mult: 0.5 }
+        { place: 1, prize: 1000 },
+        { place: 2, prize: 5000 },
+        { place: 3, prize: 1000 },
+        { place: 4, prize: 2500 },
+        { place: 5, prize: 0 },
+        { place: 6, prize: 0 }
     ];
     
     let res = `${s.h}\n━━━━━━━━━━━━━━━━━━\n🏆 *ПРИЗЫ* 🏆\n`;
     for (let i = 0; i < 6; i++) {
-        const prize = Math.floor(p.full * prizes[i].mult);
-        res += `${prizes[i].place} место: ${prize}₽ (x${prizes[i].mult})\n`;
+        if (prizes[i].prize > 0) {
+            res += `${prizes[i].place} место: ${prizes[i].prize}₽\n`;
+        }
     }
     res += `━━━━━━━━━━━━━━━━━━\n`;
     
     for (let i = 1; i <= game.max; i++) {
         const slot = game.slots[i];
-        if (!slot) res += `${emj[i] || i} ${s.i} 🆓\n`;
-        else if (slot.full) {
+        const emoji = emj[i] || i;
+        
+        if (!slot) {
+            res += `${emoji} ${s.i} 🆓\n`;
+        } else if (slot.full) {
             const playerKey = getPlayerKey(slot.full);
-            res += `${emj[i] || i} ${s.i} 👑 *${playerKey ? getDisplayName(playerKey) : slot.full}*\n`;
+            const displayName = playerKey ? getDisplayNameNoId(playerKey) : slot.full;
+            res += `${emoji} ${displayName}\n`;
         } else {
-            const leftKey = slot.left ? getPlayerKey(slot.left) : null;
-            const rightKey = slot.right ? getPlayerKey(slot.right) : null;
-            const leftName = leftKey ? getDisplayName(leftKey) : '🆓';
-            const rightName = rightKey ? getDisplayName(rightKey) : '🆓';
-            res += `${emj[i] || i} ${s.i} ⬅️ ${leftName} | ➡️ ${rightName}\n`;
+            const leftName = slot.left ? (getPlayerKey(slot.left) ? getDisplayNameNoId(getPlayerKey(slot.left)) : slot.left) : null;
+            const rightName = slot.right ? (getPlayerKey(slot.right) ? getDisplayNameNoId(getPlayerKey(slot.right)) : slot.right) : null;
+            
+            if (leftName && rightName) {
+                res += `${emoji} ${leftName} / ${rightName}\n`;
+            } else if (leftName) {
+                res += `${emoji} ${leftName} / 🆓\n`;
+            } else if (rightName) {
+                res += `${emoji} 🆓 / ${rightName}\n`;
+            }
         }
     }
     if (game.paused) res += `\n⏸️ *ПАУЗА* ⏸️`;
@@ -232,14 +227,14 @@ function renderLot() {
 }
 
 async function payout(chatId, winners, adminName) {
-    const p = prices[game.style];
+    const p = styles[game.style].price;
     const prizes = [
-        { place: 1, mult: 3 },
-        { place: 2, mult: 2 },
-        { place: 3, mult: 1.5 },
-        { place: 4, mult: 1 },
-        { place: 5, mult: 0.8 },
-        { place: 6, mult: 0.5 }
+        { place: 1, prize: 1000 },
+        { place: 2, prize: 5000 },
+        { place: 3, prize: 1000 },
+        { place: 4, prize: 2500 },
+        { place: 5, prize: 0 },
+        { place: 6, prize: 0 }
     ];
     
     let msg = `🏆 *ВЫПЛАТА ПОБЕДИТЕЛЯМ* 🏆\n━━━━━━━━━━━━━━━━━━\n`;
@@ -250,52 +245,59 @@ async function payout(chatId, winners, adminName) {
         const slot = game.slots[num];
         if (!slot) continue;
         
-        const prizeMoney = Math.floor(p.full * prizes[idx].mult);
+        const prizeMoney = prizes[idx].prize;
+        if (prizeMoney === 0) continue;
         
         if (slot.full) {
             const playerKey = getPlayerKey(slot.full);
             if (playerKey) {
                 db[playerKey].balance += prizeMoney;
-                msg += `\n${idx+1}️⃣ ${getDisplayName(playerKey)} → +${prizeMoney}₽ (x${prizes[idx].mult})`;
+                msg += `\n${idx+1}️⃣ ${getDisplayNameNoId(playerKey)} → +${prizeMoney}₽`;
                 total += prizeMoney;
                 addGamePlay(playerKey, 1);
                 if (!db[playerKey].wins) db[playerKey].wins = 0;
                 db[playerKey].wins++;
                 stats.totalGames += 1;
-            } else {
-                msg += `\n${idx+1}️⃣ ${slot.full} → +${prizeMoney}₽ (x${prizes[idx].mult}) (игрок не найден в базе!)`;
             }
         } else {
             if (slot.left) {
                 const playerKey = getPlayerKey(slot.left);
                 if (playerKey) {
                     db[playerKey].balance += prizeMoney;
-                    msg += `\n${idx+1}️⃣ ${getDisplayName(playerKey)} → +${prizeMoney}₽ (левая x${prizes[idx].mult})`;
+                    msg += `\n${idx+1}️⃣ ${getDisplayNameNoId(playerKey)} → +${prizeMoney}₽ (левая)`;
                     total += prizeMoney;
                     addGamePlay(playerKey, 0.5);
                     if (!db[playerKey].wins) db[playerKey].wins = 0;
                     db[playerKey].wins++;
                     stats.totalGames += 0.5;
-                } else {
-                    msg += `\n${idx+1}️⃣ ${slot.left} → +${prizeMoney}₽ (левая x${prizes[idx].mult}) (игрок не найден в базе!)`;
                 }
             }
             if (slot.right) {
                 const playerKey = getPlayerKey(slot.right);
                 if (playerKey) {
                     db[playerKey].balance += prizeMoney;
-                    msg += `\n${idx+1}️⃣ ${getDisplayName(playerKey)} → +${prizeMoney}₽ (правая x${prizes[idx].mult})`;
+                    msg += `\n${idx+1}️⃣ ${getDisplayNameNoId(playerKey)} → +${prizeMoney}₽ (правая)`;
                     total += prizeMoney;
                     addGamePlay(playerKey, 0.5);
                     if (!db[playerKey].wins) db[playerKey].wins = 0;
                     db[playerKey].wins++;
                     stats.totalGames += 0.5;
-                } else {
-                    msg += `\n${idx+1}️⃣ ${slot.right} → +${prizeMoney}₽ (правая x${prizes[idx].mult}) (игрок не найден в базе!)`;
                 }
             }
         }
     }
+    
+    msg += `\n\n━━━━━━━━━━━━━━━━━━\n💰 *ОБЩИЙ ВЫИГРЫШ:* ${total}₽\n🎉 *ПОЗДРАВЛЯЕМ ПОБЕДИТЕЛЕЙ!* 🎉`;
+    await sendMessage(chatId, msg);
+    
+    piggyBank += 500;
+    stats.totalLots++;
+    if (!stats.adminLots) stats.adminLots = {};
+    stats.adminLots[adminName] = (stats.adminLots[adminName] || 0) + 1;
+    game.active = false;
+    game.paused = false;
+    game.slots = {};
+}
     
     msg += `\n\n━━━━━━━━━━━━━━━━━━\n💰 *ОБЩИЙ ВЫИГРЫШ:* ${total}₽\n🎉 *ПОЗДРАВЛЯЕМ ПОБЕДИТЕЛЕЙ!* 🎉`;
     await sendMessage(chatId, msg);
