@@ -7,7 +7,7 @@ app.use(express.json());
 const ID_INSTANCE = process.env.ID_INSTANCE;
 const API_TOKEN = process.env.API_TOKEN;
 const BOSS = 'P14';
-const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель 🧿', 'Галина Дубль', 'a', '~a', '~A'];
+const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель 🧿', 'Галина Дубль', 'Евгения'];
 
 const ALLOWED_GROUPS = ['тестовая система автоматизации', 'Колесо Фортуны, резерв'];
 
@@ -40,7 +40,14 @@ const styles = {
         i: '🦊',
         price: { full: 1000, half: 500 },
         maxNumbers: 9,
-        prizesCount: 5
+        prizesCount: 5,
+        prizes: [
+            { place: 1, prize: 2000 },
+            { place: 2, prize: 3000 },
+            { place: 3, prize: 1000 },
+            { place: 4, prize: 1000 },
+            { place: 5, prize: 0 }
+        ]
     }
     
 };
@@ -193,11 +200,10 @@ function getFreeSlotsList() {
 function renderLot() {
     const s = styles[game.style];
     const p = s.price;
-    const maxPrizes = s.prizesCount || 6;
     const repeatText = game.repeat ? ' 🔁 *ЛОТ С ПОВТОРОМ* 🔁' : '';
 
-    // Призовые суммы для стиля (по умолчанию 6 мест)
-    const defaultPrizes = [
+    // Берём призы из стиля, если есть, иначе стандартные
+    const prizes = s.prizes || [
         { place: 1, prize: 1000 },
         { place: 2, prize: 5000 },
         { place: 3, prize: 1000 },
@@ -205,12 +211,6 @@ function renderLot() {
         { place: 5, prize: 0 },
         { place: 6, prize: 0 }
     ];
-    
-    // Если в стиле указано количество призов, обрезаем или дополняем
-    let prizes = [...defaultPrizes];
-    if (s.prizesCount && s.prizesCount < 6) {
-        prizes = prizes.slice(0, s.prizesCount);
-    }
 
     let res = `━━━━━━━━━━━━━━━━━━\n💰 *ЦЕНА: ${p.full}₽ / ${p.half}₽* 💰${repeatText}\n━━━━━━━━━━━━━━━━━━\n🏆 *ПРИЗЫ* 🏆\n`;
     for (let i = 0; i < prizes.length; i++) {
@@ -246,13 +246,12 @@ function renderLot() {
     if (game.paused) res += `\n⏸️ *ПАУЗА* ⏸️`;
     return res;
 }
-
 async function payout(chatId, winners, adminName) {
     const s = styles[game.style];
     const p = s.price;
-    const maxPrizes = s.prizesCount || 6;
     
-    const defaultPrizes = [
+    // Берём призы из стиля, если есть, иначе стандартные
+    const prizes = s.prizes || [
         { place: 1, prize: 1000 },
         { place: 2, prize: 5000 },
         { place: 3, prize: 1000 },
@@ -260,16 +259,11 @@ async function payout(chatId, winners, adminName) {
         { place: 5, prize: 0 },
         { place: 6, prize: 0 }
     ];
-    
-    let prizes = [...defaultPrizes];
-    if (s.prizesCount && s.prizesCount < 6) {
-        prizes = prizes.slice(0, s.prizesCount);
-    }
 
     let msg = `🏆 *ВЫПЛАТА ПОБЕДИТЕЛЯМ* 🏆\n━━━━━━━━━━━━━━━━━━\n`;
     let total = 0;
 
-    for (let idx = 0; idx < Math.min(winners.length, maxPrizes); idx++) {
+    for (let idx = 0; idx < Math.min(winners.length, prizes.length); idx++) {
         const num = winners[idx];
         const slot = game.slots[num];
         if (!slot) continue;
