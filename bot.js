@@ -155,7 +155,7 @@ function addGamePlay(playerKey, value) {
 function showPiggy(chatId) {
     let totalTickets = 0;
     for (let key in db) if (db[key]?.tickets) totalTickets += db[key].tickets;
-    sendMessage(chatId, `🐷 *КОПИЛКА КАЗИНО* 🐷\n━━━━━━━━━━━━━━━━━━\n💰 Сумма: *${piggyBank}₽*\n🎟️ Мешочков: *${totalTickets}*`);
+    sendMessage(chatId, `🐷 *КОПИЛКА-СВИНКА* 🐷\n━━━━━━━━━━━━━━━━━━\n💰 Сумма: *${piggyBank}₽*\n🎟️ Мешочков: *${totalTickets}*`);
 }
 
 function breakPiggy(chatId) {
@@ -430,7 +430,7 @@ async function handleMessage(chatId, sender, text, groupName) {
     if (!playerExists && cmd.startsWith('/') && cmd !== '/регистрация') {
         await sendMessage(chatId, `❌ *ДОСТУП ЗАПРЕЩЁН* ❌
 ━━━━━━━━━━━━━━━━━━
-👤 ${sender}, вы не зарегистрированы в системе казино.
+👤 ${sender}, вы не зарегистрированы в системе для игры.
 
 ✅ Для регистрации напишите:
 /регистрация
@@ -442,7 +442,7 @@ async function handleMessage(chatId, sender, text, groupName) {
     if (!playerExists && !cmd.startsWith('/') && !cmd.startsWith('.') && cmd.length > 1) {
         await sendMessage(chatId, `👋 *Здравствуйте, ${sender}!* 👋
 ━━━━━━━━━━━━━━━━━━
-Вы не зарегистрированы в системе казино.
+Вы не зарегистрированы в системе игры.
 
 ✅ Для регистрации напишите:
 /регистрация
@@ -510,7 +510,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         let totalTickets = 0;
         for (let key in db) if (db[key]?.tickets) totalTickets += db[key].tickets;
         
-        let out = `🐷 *КОПИЛКА КАЗИНО* 🐷\n💰 Сумма: ${piggyBank}₽ | 🎟️ Мешочков: ${totalTickets}\n━━━━━━━━━━━━━━━━━━\n🏦 *БАЛАНС ВСЕХ* 🏦\n`;
+        let out = `🐷 *КОПИЛКА-СВИНКА* 🐷\n💰 Сумма: ${piggyBank}₽ | 🎟️ Мешочков: ${totalTickets}\n━━━━━━━━━━━━━━━━━━\n🏦 *БАЛАНС ВСЕХ* 🏦\n`;
         list.forEach(([n, d], i) => {
             const name = n.split(' (')[0];
             const tickets = d.tickets || 0;
@@ -647,7 +647,7 @@ async function handleMessage(chatId, sender, text, groupName) {
     }
 
     if (cmd === '.помощь') {
-        await sendMessage(chatId, `🔥 *TITAN CASINO* 🔥
+        await sendMessage(chatId, `🔥 *ПАНЕЛЬ АДМИНА* 🔥
 ━━━━━━━━━━━━━━━━━━━━━
 👥 *УПРАВЛЕНИЕ*
 .участники | .поиск | .топ10 | .удалить
