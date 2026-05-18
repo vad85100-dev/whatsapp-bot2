@@ -501,7 +501,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         await sendMessage(chatId, `📊 *СТАТИСТИКА*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(playerKey)}\n🎲 Игр: ${g}\n🎟️ Меш.: ${t}\n🏆 Побед: ${w}\n💰 Баланс: ${db[playerKey]?.balance || 0}₽`);
         return;
     }
-    if (cmd === '/банк') {
+        if (cmd === '/банк') {
         const list = Object.entries(db);
         if (!list.length) {
             await sendMessage(chatId, '📭 База пуста');
@@ -513,7 +513,9 @@ async function handleMessage(chatId, sender, text, groupName) {
         let out = `🐷 *КОПИЛКА КАЗИНО* 🐷\n💰 Сумма: ${piggyBank}₽ | 🎟️ Мешочков: ${totalTickets}\n━━━━━━━━━━━━━━━━━━\n🏦 *БАЛАНС ВСЕХ* 🏦\n`;
         list.forEach(([n, d], i) => {
             const name = n.split(' (')[0];
-            out += `${i + 1}. ${name} — ${d.balance}₽\n`;
+            const tickets = d.tickets || 0;
+            const ticketIcon = tickets > 0 ? ` 🎟️${tickets}` : '';
+            out += `${i + 1}. ${name}${ticketIcon} — ${d.balance}₽\n`;
         });
         await sendMessage(chatId, out);
         return;
@@ -940,13 +942,17 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
     
-    if (cmd === '.поиск' && args) {
+       if (cmd === '.поиск' && args) {
         const key = getPlayerKey(args);
         if (!key) {
             await sendMessage(chatId, `❌ "${args}" не найден`);
             return;
         }
-        await sendMessage(chatId, `🔎 *РЕЗУЛЬТАТ*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}\n💰 ${db[key].balance}₽`);
+        const games = db[key]?.games || 0;
+        const tickets = db[key]?.tickets || 0;
+        const wins = db[key]?.wins || 0;
+        const gamesStr = games % 1 === 0 ? games : games.toFixed(1);
+        await sendMessage(chatId, `🔎 *РЕЗУЛЬТАТ ПОИСКА*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}\n🎲 Игр: ${gamesStr}\n🎟️ Меш.: ${tickets}\n🏆 Побед: ${wins}\n💰 Баланс: ${db[key].balance}₽`);
         return;
     }
     
