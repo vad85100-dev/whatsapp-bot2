@@ -26,7 +26,8 @@ let stats = {
 
 // Очередь последних ставок
 let lastBets = [];
-
+// Информация о лоте для каждого админа (хранится в памяти, можно сохранять в БД)
+let lotInfo = {};
 const emj = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '1️⃣1️⃣', '1️⃣2️⃣'];
 
 const styles = {
@@ -202,7 +203,6 @@ function renderLot() {
     const p = s.price;
     const repeatText = game.repeat ? ' 🔁 *ЛОТ С ПОВТОРОМ* 🔁' : '';
 
-    // Берём призы из стиля, если есть, иначе стандартные
     const prizes = s.prizes || [
         { place: 1, prize: 1000 },
         { place: 2, prize: 5000 },
@@ -243,7 +243,14 @@ function renderLot() {
             }
         }
     }
-    if (game.paused) res += `\n⏸️ *ПАУЗА* ⏸️`;
+    
+    if (game.paused) {
+        res += `\n⏸️ *ЛОТ НА ПАУЗЕ* ⏸️`;
+        // Добавляем информацию админа, который начал лот
+        if (game.startedBy && lotInfo[game.startedBy]) {
+            res += `\n━━━━━━━━━━━━━━━━━━\n📋 *ИНФОРМАЦИЯ ОТ ВЕДУЩЕГО:*\n${lotInfo[game.startedBy]}`;
+        }
+    }
     return res;
 }
 async function payout(chatId, winners, adminName) {
@@ -706,6 +713,28 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
 
+    if (cmd === '.инфо' && args && isAdminUser) {
+        lotInfo[sender] = args;
+        await sendMessage(chatId, `✅ *ИНФОРМАЦИЯ СОХРАНЕНА*\n━━━━━━━━━━━━━━━━━━\n👤 ${sender}\n📝 *Текст:*\n${args}`);
+        return;
+    }
+    
+    if (cmd === '.инфо' && !args && isAdminUser) {
+        const info = lotInfo[sender];
+        if (info) {
+            await sendMessage(chatId, `📋 *ВАША ИНФОРМАЦИЯ*\n━━━━━━━━━━━━━━━━━━\n${info}`);
+        } else {
+            await sendMessage(chatId, `ℹ️ *У ВАС НЕТ СОХРАНЕННОЙ ИНФОРМАЦИИ*\n━━━━━━━━━━━━━━━━━━\nИспользуйте: .инфо [текст]`);
+        }
+        return;
+    }
+    
+    if (cmd === '.удалить инфо' && isAdminUser) {
+        delete lotInfo[sender];
+        await sendMessage(chatId, `🗑️ *ИНФОРМАЦИЯ УДАЛЕНА*\n━━━━━━━━━━━━━━━━━━\n👤 ${sender}`);
+        return;
+    }
+    
     if (cmd === '.принять' && args) {
         const key = getPlayerKey(args);
         if (!key) {
@@ -876,7 +905,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         await sendMessage(chatId, `🗑️ *УДАЛЁН*\n👤 ${args}`);
         return;
     }
-      if (cmd === '.начать' && args) {
+            if (cmd === '.начать' && args) {
         const parts = args.trim().toLowerCase().split(/\s+/);
         const styleName = parts[0];
         const isRepeat = parts[1] === 'повтор';
@@ -889,7 +918,8 @@ async function handleMessage(chatId, sender, text, groupName) {
                 style: styleName, 
                 max: maxNumbers, 
                 slots: {},
-                repeat: isRepeat
+                repeat: isRepeat,
+                startedBy: sender  // ← добавляем, кто начал лот
             };
             await sendMessage(chatId, renderLot());
         } else {
