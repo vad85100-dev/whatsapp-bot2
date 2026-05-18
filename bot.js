@@ -194,7 +194,7 @@ function renderLot() {
         const emoji = emj[i] || i;
 
         if (!slot) {
-            res += `${emoji} ${s.i} 🆓\n`;
+            res += `${emoji} ${s.i} 🟢\n`;
         } else if (slot.full) {
             const playerKey = getPlayerKey(slot.full);
             const displayName = playerKey ? getDisplayNameNoId(playerKey) : slot.full;
@@ -206,9 +206,9 @@ function renderLot() {
             if (leftName && rightName) {
                 res += `${emoji} ${leftName} / ${rightName}\n`;
             } else if (leftName) {
-                res += `${emoji} ${leftName} / 🆓\n`;
+                res += `${emoji} ${leftName} / 🟢\n`;
             } else if (rightName) {
-                res += `${emoji} 🆓 / ${rightName}\n`;
+                res += `${emoji} 🟢 / ${rightName}\n`;
             }
         }
     }
@@ -216,7 +216,10 @@ function renderLot() {
     return res;
 }
 async function payout(chatId, winners, adminName) {
-    const p = styles[game.style].price;
+    const s = styles[game.style];
+    const p = s.price;
+    
+    // Призовые места (фиксированные суммы, а не множители)
     const prizes = [
         { place: 1, prize: 1000 },
         { place: 2, prize: 5000 },
@@ -234,8 +237,13 @@ async function payout(chatId, winners, adminName) {
         const slot = game.slots[num];
         if (!slot) continue;
 
-        const prizeMoney = prizes[idx].prize;
+        let prizeMoney = prizes[idx].prize;
         if (prizeMoney === 0) continue;
+
+        // Если номер занят половинками — делим приз пополам
+        if (!slot.full && (slot.left || slot.right)) {
+            prizeMoney = Math.floor(prizeMoney / 2);
+        }
 
         if (slot.full) {
             const playerKey = getPlayerKey(slot.full);
