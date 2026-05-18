@@ -34,7 +34,15 @@ const styles = {
         h: '🦥🦥🦥1️⃣0️⃣0️⃣0️⃣➖5️⃣0️⃣0️⃣🦥🦥🦥\n🐿️🐿️🐿️🐿️🐿️🐿️🐿️🐿️🐿️\n🪵1️⃣🪵🪵1️⃣2️⃣0️⃣0️⃣🪵\n🦥2️⃣🦥🦥8️⃣0️⃣0️⃣🦥\n🌰3️⃣🌰🌰1️⃣0️⃣0️⃣0️⃣🌰\n🐿️4️⃣🐿️🐿️3️⃣🌰🌰🌰\n🪵5️⃣🪵🪵1️⃣0️⃣0️⃣0️⃣🪵\n🦥6️⃣🦥🦥5️⃣0️⃣0️⃣🦥\n🌰🌰🌰🌰🌰🌰🌰🌰🌰\n1️⃣\n2️⃣\n3️⃣\n4️⃣\n5️⃣\n6️⃣\n7️⃣\n8️⃣\n9️⃣\n🔟',
         i: '🦥',
         price: { full: 1000, half: 500 }
+    },
+    рыжий: {
+        h: '🦊🦊🦊1️⃣0️⃣0️⃣0️⃣➖5️⃣0️⃣0️⃣🦊🦊🦊\n🔥🔥🔥🔥🔥🔥🔥🔥🔥\n🍂1️⃣🍂🍂1️⃣2️⃣0️⃣0️⃣🍂\n🦊2️⃣🦊🦊8️⃣0️⃣0️⃣🦊\n🌾3️⃣🌾🌾1️⃣0️⃣0️⃣0️⃣🌾\n🍁4️⃣🍁🍁3️⃣🌾🌾🌾\n🪵5️⃣🪵🪵1️⃣0️⃣0️⃣0️⃣🪵\n🦊6️⃣🦊🦊5️⃣0️⃣0️⃣🦊\n🍂🍂🍂🍂🍂🍂🍂🍂🍂\n1️⃣\n2️⃣\n3️⃣\n4️⃣\n5️⃣\n6️⃣\n7️⃣\n8️⃣\n9️⃣',
+        i: '🦊',
+        price: { full: 1000, half: 500 },
+        maxNumbers: 9,
+        prizesCount: 5
     }
+    
 };
 
 const jokes = [
@@ -185,9 +193,11 @@ function getFreeSlotsList() {
 function renderLot() {
     const s = styles[game.style];
     const p = s.price;
+    const maxPrizes = s.prizesCount || 6;
     const repeatText = game.repeat ? ' 🔁 *ЛОТ С ПОВТОРОМ* 🔁' : '';
 
-    const prizes = [
+    // Призовые суммы для стиля (по умолчанию 6 мест)
+    const defaultPrizes = [
         { place: 1, prize: 1000 },
         { place: 2, prize: 5000 },
         { place: 3, prize: 1000 },
@@ -195,9 +205,15 @@ function renderLot() {
         { place: 5, prize: 0 },
         { place: 6, prize: 0 }
     ];
+    
+    // Если в стиле указано количество призов, обрезаем или дополняем
+    let prizes = [...defaultPrizes];
+    if (s.prizesCount && s.prizesCount < 6) {
+        prizes = prizes.slice(0, s.prizesCount);
+    }
 
     let res = `━━━━━━━━━━━━━━━━━━\n💰 *ЦЕНА: ${p.full}₽ / ${p.half}₽* 💰${repeatText}\n━━━━━━━━━━━━━━━━━━\n🏆 *ПРИЗЫ* 🏆\n`;
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < prizes.length; i++) {
         if (prizes[i].prize > 0) {
             res += `${prizes[i].place} место: ${prizes[i].prize}₽\n`;
         }
@@ -234,8 +250,9 @@ function renderLot() {
 async function payout(chatId, winners, adminName) {
     const s = styles[game.style];
     const p = s.price;
+    const maxPrizes = s.prizesCount || 6;
     
-    const prizes = [
+    const defaultPrizes = [
         { place: 1, prize: 1000 },
         { place: 2, prize: 5000 },
         { place: 3, prize: 1000 },
@@ -243,11 +260,16 @@ async function payout(chatId, winners, adminName) {
         { place: 5, prize: 0 },
         { place: 6, prize: 0 }
     ];
+    
+    let prizes = [...defaultPrizes];
+    if (s.prizesCount && s.prizesCount < 6) {
+        prizes = prizes.slice(0, s.prizesCount);
+    }
 
     let msg = `🏆 *ВЫПЛАТА ПОБЕДИТЕЛЯМ* 🏆\n━━━━━━━━━━━━━━━━━━\n`;
     let total = 0;
 
-    for (let idx = 0; idx < Math.min(winners.length, 6); idx++) {
+    for (let idx = 0; idx < Math.min(winners.length, maxPrizes); idx++) {
         const num = winners[idx];
         const slot = game.slots[num];
         if (!slot) continue;
@@ -308,7 +330,6 @@ async function payout(chatId, winners, adminName) {
     game.active = false;
     game.paused = false;
     game.slots = {};
-    lastBets = [];
 }
 
 async function generateReport(chatId) {
@@ -548,7 +569,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
 
-    // ===== СТАВКИ =====
+        // ===== СТАВКИ =====
     if (game.active && !game.paused && /^[\d,\/\\]+$/.test(cmd)) {
         const playerKey = getPlayerKey(sender);
         if (!playerKey) {
@@ -594,6 +615,49 @@ async function handleMessage(chatId, sender, text, groupName) {
             validBets.push({ num, type, need });
             totalCost += need;
         }
+
+        if (errors.length) {
+            await sendMessage(chatId, `❌ *ОШИБКИ*\n${errors.join('\n')}`);
+            return;
+        }
+
+        db[playerKey].balance = (db[playerKey].balance || 0) - totalCost;
+
+        for (const bet of validBets) {
+            if (!game.slots[bet.num]) game.slots[bet.num] = {};
+            if (bet.type === 'full') game.slots[bet.num].full = sender;
+            else if (bet.type === 'half') {
+                if (!game.slots[bet.num].left) game.slots[bet.num].left = sender;
+                else if (!game.slots[bet.num].right) game.slots[bet.num].right = sender;
+            }
+        }
+
+        let anySlotAvailable = false;
+        for (let i = 1; i <= game.max; i++) {
+            const s = game.slots[i];
+            if (!s) {
+                anySlotAvailable = true;
+                break;
+            } else if (!s.full) {
+                if (!s.left || !s.right) {
+                    anySlotAvailable = true;
+                    break;
+                }
+            }
+        }
+        if (!anySlotAvailable) {
+            game.paused = true;
+        }
+
+        let success = `✅ *СТАВКИ ПРИНЯТЫ*\n━━━━━━━━━━━━━━━━━━\n`;
+        for (const bet of validBets) {
+            const price = bet.type === 'full' ? p.full : p.half;
+            success += `🎲 Номер ${bet.num}${bet.type === 'half' ? '/' : ''} — ${price}₽\n`;
+        }
+        success += `\n💰 Списано: ${totalCost}₽\n💰 Новый баланс: ${db[playerKey].balance}₽\n\n${renderLot()}`;
+        await sendMessage(chatId, success);
+        return;
+    }
 
         if (errors.length) {
             await sendMessage(chatId, `❌ *ОШИБКИ*\n${errors.join('\n')}`);
@@ -888,13 +952,13 @@ async function handleMessage(chatId, sender, text, groupName) {
         await sendMessage(chatId, `🗑️ *УДАЛЁН*\n👤 ${args}`);
         return;
     }
-    if (cmd === '.начать' && args) {
+      if (cmd === '.начать' && args) {
         const parts = args.trim().toLowerCase().split(/\s+/);
         const styleName = parts[0];
         const isRepeat = parts[1] === 'повтор';
         
         if (styles[styleName]) {
-            const maxNumbers = styleName === 'обезьянка' ? 12 : 10;
+            const maxNumbers = styles[styleName].maxNumbers || 10;
             game = { 
                 active: true, 
                 paused: false, 
@@ -903,7 +967,6 @@ async function handleMessage(chatId, sender, text, groupName) {
                 slots: {},
                 repeat: isRepeat
             };
-            lastBets = [];
             await sendMessage(chatId, renderLot());
         } else {
             await sendMessage(chatId, `❌ *ОШИБКА*\n━━━━━━━━━━━━━━━━━━\nСтиль "${styleName}" не найден.\nДоступные стили: ${Object.keys(styles).join(', ')}`);
