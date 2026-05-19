@@ -735,7 +735,7 @@ async function handleMessage(chatId, sender, text, groupName) {
 🎲 *ЛОТ*
 .стили
 .начать [стиль] [повтор]
-.список | .пауза
+.список | .пауза | .продолжить
 .победители [1 2 3 4 5 6]
 
 🐷 *КОПИЛКА*
@@ -900,6 +900,20 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
 
+    if (cmd === '.продолжить') {
+        if (!game.active) {
+            await sendMessage(chatId, '❌ Нет активного лота');
+            return;
+        }
+        if (!game.paused) {
+            await sendMessage(chatId, '❌ Лот не на паузе');
+            return;
+        }
+        game.paused = false;
+        await sendMessage(chatId, `▶️ *ЛОТ ПРОДОЛЖЕН* ▶️\n━━━━━━━━━━━━━━━━━━\nСтавки снова принимаются!\n\n${renderLot()}`);
+        return;
+    }
+    
     if (cmd === '.убрать админ' && args && sender === BOSS) {
         const key = getPlayerKey(args);
         if (!key) {
