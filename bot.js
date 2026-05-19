@@ -29,7 +29,7 @@ let lotInfo = {};
 const emj = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '1️⃣1️⃣', '1️⃣2️⃣'];
 
 const styles = {
-        обезьянка: {
+    обезьянка: {
         h: '🦥🦥🦥1️⃣0️⃣0️⃣0️⃣➖5️⃣0️⃣0️⃣🦥🦥🦥\n🐿️🐿️🐿️🐿️🐿️🐿️🐿️🐿️🐿️\n🪵1️⃣🪵🪵1️⃣2️⃣0️⃣0️⃣🪵\n🦥2️⃣🦥🦥8️⃣0️⃣0️⃣🦥\n🌰3️⃣🌰🌰1️⃣0️⃣0️⃣0️⃣🌰\n🐿️4️⃣🐿️🐿️3️⃣🌰🌰🌰\n🪵5️⃣🪵🪵1️⃣0️⃣0️⃣0️⃣🪵\n🦥6️⃣🦥🦥5️⃣0️⃣0️⃣🦥\n🌰🌰🌰🌰🌰🌰🌰🌰🌰\n1️⃣\n2️⃣\n3️⃣\n4️⃣\n5️⃣\n6️⃣\n7️⃣\n8️⃣\n9️⃣\n🔟',
         i: '🦥',
         price: { full: 1000, half: 500 },
@@ -38,7 +38,7 @@ const styles = {
         prizes: [
             { place: 1, prize: 1000 },
             { place: 2, prize: 5000 },
-            { place: 3, prize: 1000 },
+            { place: 3, prize: 500 },
             { place: 4, prize: 2500 },
             { place: 5, prize: 0 },
             { place: 6, prize: 0 }
@@ -53,19 +53,19 @@ const styles = {
         prizes: [
             { place: 1, prize: 2000 },
             { place: 2, prize: 3000 },
-            { place: 3, prize: 1000 },
+            { place: 3, prize: 500 },
             { place: 4, prize: 1000 },
             { place: 5, prize: 0 }
         ]
     },
-        клубничка: {
+    клубничка: {
         h: '🍓🍓🍓3️⃣0️⃣0️⃣0️⃣➖1️⃣5️⃣0️⃣0️⃣🍓🍓🍓\n🍓🍓🍓🍓🍓🍓🍓🍓\n🍓1️⃣🍓🍓6️⃣0️⃣0️⃣0️⃣🍓\n🍓2️⃣🍓🍓4️⃣0️⃣0️⃣0️⃣🍓\n🍓3️⃣🍓🍓2️⃣5️⃣0️⃣0️⃣🍓\n🍓4️⃣🍓🍓2️⃣5️⃣0️⃣0️⃣🍓\n🍓5️⃣🍓🍓6️⃣0️⃣0️⃣0️⃣🍓\n🍓🍓🍓🍓🍓🍓🍓🍓\n1️⃣\n2️⃣\n3️⃣\n4️⃣\n5️⃣\n6️⃣\n7️⃣\n8️⃣',
         i: '🍓',
         price: { full: 3000, half: 1500 },
         maxNumbers: 8,
         prizesCount: 5,
         prizes: [
-            { place: 1, prize: 6000 },
+            { place: 1, prize: 5000 },
             { place: 2, prize: 4000 },
             { place: 3, prize: 2500 },
             { place: 4, prize: 2500 },
@@ -79,7 +79,7 @@ const styles = {
         maxNumbers: 11,
         prizesCount: 6,
         prizes: [
-            { place: 1, prize: 6000 },
+            { place: 1, prize: 5500 },
             { place: 2, prize: 1000 },
             { place: 3, prize: 1000 },
             { place: 4, prize: 1000 },
@@ -94,7 +94,7 @@ const styles = {
         maxNumbers: 10,
         prizesCount: 6,
         prizes: [
-            { place: 1, prize: 6000 },
+            { place: 1, prize: 5500 },
             { place: 2, prize: 2000 },
             { place: 3, prize: 1500 },
             { place: 4, prize: 2000 },
@@ -295,7 +295,6 @@ function renderLot() {
 
 async function payout(chatId, winners, adminName) {
     const s = styles[game.style];
-    const p = s.price;
     
     const prizes = s.prizes || [
         { place: 1, prize: 1000 },
@@ -327,10 +326,8 @@ async function payout(chatId, winners, adminName) {
                 db[playerKey].balance += prizeMoney;
                 msg += `\n${idx + 1}️⃣ ${getDisplayNameNoId(playerKey)} → +${prizeMoney}₽`;
                 total += prizeMoney;
-                addGamePlay(playerKey, 1);
                 if (!db[playerKey].wins) db[playerKey].wins = 0;
                 db[playerKey].wins++;
-                stats.totalGames += 1;
             }
         } else {
             if (slot.left) {
@@ -339,10 +336,8 @@ async function payout(chatId, winners, adminName) {
                     db[playerKey].balance += prizeMoney;
                     msg += `\n${idx + 1}️⃣ ${getDisplayNameNoId(playerKey)} → +${prizeMoney}₽ (левая)`;
                     total += prizeMoney;
-                    addGamePlay(playerKey, 0.5);
                     if (!db[playerKey].wins) db[playerKey].wins = 0;
                     db[playerKey].wins++;
-                    stats.totalGames += 0.5;
                 }
             }
             if (slot.right) {
@@ -351,19 +346,18 @@ async function payout(chatId, winners, adminName) {
                     db[playerKey].balance += prizeMoney;
                     msg += `\n${idx + 1}️⃣ ${getDisplayNameNoId(playerKey)} → +${prizeMoney}₽ (правая)`;
                     total += prizeMoney;
-                    addGamePlay(playerKey, 0.5);
                     if (!db[playerKey].wins) db[playerKey].wins = 0;
                     db[playerKey].wins++;
-                    stats.totalGames += 0.5;
                 }
             }
         }
     }
 
-    msg += `\n\n━━━━━━━━━━━━━━━━━━\n💰 *ОБЩИЙ ВЫИГРЫШ:* ${total}₽\n🎉 *ПОЗДРАВЛЯЕМ ПОБЕДИТЕЛЕЙ!* 🎉`;
+    const piggyContribution = 1000;
+    msg += `\n\n━━━━━━━━━━━━━━━━━━\n💰 *ОБЩИЙ ВЫИГРЫШ:* ${total}₽\n🐷 *В КОПИЛКУ:* +${piggyContribution}₽\n🎉 *ПОЗДРАВЛЯЕМ ПОБЕДИТЕЛЕЙ!* 🎉`;
     await sendMessage(chatId, msg);
 
-    piggyBank += 500;
+    piggyBank += piggyContribution;
     stats.totalLots++;
     if (!stats.adminLots) stats.adminLots = {};
     stats.adminLots[adminName] = (stats.adminLots[adminName] || 0) + 1;
@@ -398,7 +392,6 @@ async function generateReport(chatId) {
     }
     if (!adminStats) adminStats = '\nНет данных';
 
-    // Форматируем дату начала периода
     let startDate = 'неизвестно';
     if (stats.reportDate) {
         try {
@@ -429,14 +422,14 @@ async function generateReport(chatId) {
 
     await sendMessage(chatId, generalReport);
 
-    // Сбрасываем статистику, НО НЕ ТРОГАЕМ КОПИЛКУ И ИГРОКОВ
     stats = {
         totalLots: 0,
         adminLots: {},
         totalGames: 0,
-        reportDate: new Date().toISOString()
+        reportDate: new Date()
     };
 }
+
 async function exportData(chatId) {
     const exportObj = {
         version: '1.0',
@@ -571,14 +564,13 @@ async function handleMessage(chatId, sender, text, groupName) {
         await sendMessage(chatId, `📊 *СТАТИСТИКА*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(playerKey)}\n🎲 Игр: ${g}\n🎟️ Меш.: ${t}\n🏆 Побед: ${w}\n💰 Баланс: ${db[playerKey]?.balance || 0}₽`);
         return;
     }
-              if (cmd === '/банк') {
+    if (cmd === '/банк') {
         const list = Object.entries(db);
         if (!list.length) {
             await sendMessage(chatId, '📭 База пуста');
             return;
         }
         
-        // Сортируем по имени (алфавит)
         list.sort((a, b) => {
             const nameA = a[0].split(' (')[0].toLowerCase();
             const nameB = b[0].split(' (')[0].toLowerCase();
@@ -690,6 +682,17 @@ async function handleMessage(chatId, sender, text, groupName) {
             }
         }
 
+        // НАЧИСЛЕНИЕ ИГР ЗА СТАВКИ (исправлено!)
+        for (const bet of validBets) {
+            if (bet.type === 'full') {
+                addGamePlay(playerKey, 1);
+                stats.totalGames += 1;
+            } else if (bet.type === 'half') {
+                addGamePlay(playerKey, 0.5);
+                stats.totalGames += 0.5;
+            }
+        }
+
         let anySlotAvailable = false;
         for (let i = 1; i <= game.max; i++) {
             const s = game.slots[i];
@@ -796,21 +799,18 @@ async function handleMessage(chatId, sender, text, groupName) {
     }
 
     // ===== МЕШОЧКИ =====
-       if (cmd === '.мешочки' && args && isAdminUser) {
+    if (cmd === '.мешочки' && args && isAdminUser) {
         const parts = args.trim().split(/\s+/);
         let op = '';
         let nameOrId = '';
         let val = 0;
         
-        // Определяем порядок: "15 + 2" или "+ 15 2" или "Фаягуль + 2"
         if (parts.length >= 3) {
-            // Если первый аргумент — число или имя, а второй — оператор
             if (parts[1] === '+' || parts[1] === '-' || parts[1] === '=') {
                 nameOrId = parts[0];
                 op = parts[1];
                 val = parseInt(parts[2]);
             } 
-            // Если первый аргумент — оператор
             else if (parts[0] === '+' || parts[0] === '-' || parts[0] === '=') {
                 op = parts[0];
                 nameOrId = parts[1];
@@ -974,7 +974,6 @@ async function handleMessage(chatId, sender, text, groupName) {
         let nameOrId = '';
         let val = 0;
         
-        // Поддерживаем форматы: "15 + 2", "+ 15 2", "Фаягуль + 2", "Фаягуль = 5"
         if (parts.length >= 3) {
             if (parts[1] === '+' || parts[1] === '-' || parts[1] === '=') {
                 nameOrId = parts[0];
@@ -1013,7 +1012,6 @@ async function handleMessage(chatId, sender, text, groupName) {
         
         db[key].games = newGames;
         
-        // Пересчитываем мешочки (каждые 10 игр = 1 мешочек)
         const oldTickets = db[key].tickets || 0;
         const newTickets = Math.floor(newGames / 10);
         db[key].tickets = newTickets;
@@ -1059,13 +1057,12 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
 
-          if (cmd === '.участники') {
+    if (cmd === '.участники') {
         const list = Object.entries(db);
         if (!list.length) {
             await sendMessage(chatId, '📭 База пуста');
             return;
         }
-        // Сортируем по имени (алфавит)
         list.sort((a, b) => {
             const nameA = a[0].split(' (')[0].toLowerCase();
             const nameB = b[0].split(' (')[0].toLowerCase();
@@ -1097,7 +1094,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
     
-       if (cmd === '.поиск' && args) {
+    if (cmd === '.поиск' && args) {
         const key = getPlayerKey(args);
         if (!key) {
             await sendMessage(chatId, `❌ "${args}" не найден`);
@@ -1145,14 +1142,13 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
     
- if (cmd === '.список') {
+    if (cmd === '.список') {
         if (game.active) await sendMessage(chatId, renderLot());
         else await sendMessage(chatId, '❌ Нет активного лота');
         return;
     }
     
- if (cmd === '.пауза') {
-    sendMessage("проверка")
+    if (cmd === '.пауза') {
         if (!game.active) {
             await sendMessage(chatId, '❌ Нет активного лота');
             return;
@@ -1162,7 +1158,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
 
-        if (cmd === '.стили') {
+    if (cmd === '.стили') {
         let stylesList = '🎨 *ДОСТУПНЫЕ СТИЛИ ЛОТОВ* 🎨\n━━━━━━━━━━━━━━━━━━\n';
         for (const [name, style] of Object.entries(styles)) {
             const price = style.price;
