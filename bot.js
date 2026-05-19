@@ -67,7 +67,7 @@ const styles = {
         prizes: [
             { place: 1, prize: 5000 },
             { place: 2, prize: 4000 },
-            { place: 3, prize: 2500 },
+            { place: 3, prize: 1000 },
             { place: 4, prize: 2500 },
             { place: 5, prize: 6000 }
         ]
@@ -96,7 +96,7 @@ const styles = {
         prizes: [
             { place: 1, prize: 5500 },
             { place: 2, prize: 2000 },
-            { place: 3, prize: 1500 },
+            { place: 3, prize: 2000 },
             { place: 4, prize: 2000 },
             { place: 5, prize: 2000 },
             { place: 6, prize: 4000 }
