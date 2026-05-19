@@ -38,7 +38,7 @@ const styles = {
         prizes: [
             { place: 1, prize: 1000 },
             { place: 2, prize: 5000 },
-            { place: 3, prize: 500 },
+            { place: 3, prize: 1000 },
             { place: 4, prize: 2500 },
             { place: 5, prize: 0 },
             { place: 6, prize: 0 }
