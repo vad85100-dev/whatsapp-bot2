@@ -571,21 +571,30 @@ async function handleMessage(chatId, sender, text, groupName) {
         await sendMessage(chatId, `📊 *СТАТИСТИКА*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(playerKey)}\n🎲 Игр: ${g}\n🎟️ Меш.: ${t}\n🏆 Побед: ${w}\n💰 Баланс: ${db[playerKey]?.balance || 0}₽`);
         return;
     }
-        if (cmd === '/банк') {
+              if (cmd === '/банк') {
         const list = Object.entries(db);
         if (!list.length) {
             await sendMessage(chatId, '📭 База пуста');
             return;
         }
+        
+        // Сортируем по имени (алфавит)
+        list.sort((a, b) => {
+            const nameA = a[0].split(' (')[0].toLowerCase();
+            const nameB = b[0].split(' (')[0].toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+        
         let totalTickets = 0;
         for (let key in db) if (db[key]?.tickets) totalTickets += db[key].tickets;
         
-        let out = `🐷 *КОПИЛКА-СВИНКА* 🐷\n💰 Сумма: ${piggyBank}₽ | 🎟️ Мешочков: ${totalTickets}\n━━━━━━━━━━━━━━━━━━\n🏦 *БАЛАНС ВСЕХ* 🏦\n`;
+        let out = `🐷 *КОПИЛКА-СВИНКА* 🐷\n💰 Сумма: ${piggyBank}₽ | 🎟️ Всего мешочков: ${totalTickets}\n━━━━━━━━━━━━━━━━━━\n🏦 *БАЛАНС ВСЕХ* 🏦\n`;
         list.forEach(([n, d], i) => {
             const name = n.split(' (')[0];
+            const games = d.games || 0;
             const tickets = d.tickets || 0;
-            const ticketIcon = tickets > 0 ? ` 🎟️${tickets}` : '';
-            out += `${i + 1}. ${name}${ticketIcon} — ${d.balance}₽\n`;
+            const gamesStr = games % 1 === 0 ? games : games.toFixed(1);
+            out += `${i + 1}. ${name} — 🎲 ${gamesStr} | 🎟️ ${tickets} | 💰 ${d.balance}₽\n`;
         });
         await sendMessage(chatId, out);
         return;
@@ -1050,17 +1059,27 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
 
-    if (cmd === '.участники') {
+          if (cmd === '.участники') {
         const list = Object.entries(db);
         if (!list.length) {
             await sendMessage(chatId, '📭 База пуста');
             return;
         }
+        // Сортируем по имени (алфавит)
+        list.sort((a, b) => {
+            const nameA = a[0].split(' (')[0].toLowerCase();
+            const nameB = b[0].split(' (')[0].toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
+        
         let out = '👥 *УЧАСТНИКИ*\n━━━━━━━━━━━━━━━━━━\n';
         list.forEach(([n, d], i) => {
             const name = n.split(' (')[0];
             const id = d.id || '?';
-            out += `${i + 1}. ${name} (${id}) — ${d.balance}₽\n`;
+            const games = d.games || 0;
+            const tickets = d.tickets || 0;
+            const gamesStr = games % 1 === 0 ? games : games.toFixed(1);
+            out += `${i + 1}. ${name} (${id}) — 🎲 ${gamesStr} | 🎟️ ${tickets} | 💰 ${d.balance}₽\n`;
         });
         await sendMessage(chatId, out);
         return;
