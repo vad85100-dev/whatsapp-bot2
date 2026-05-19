@@ -199,10 +199,13 @@ function addGamePlay(playerKey, value) {
     if (!db[playerKey]) return;
     if (!db[playerKey].games) db[playerKey].games = 0;
     if (!db[playerKey].tickets) db[playerKey].tickets = 0;
+    
     db[playerKey].games += value;
-    const newTickets = Math.floor(db[playerKey].games / 10) - db[playerKey].tickets;
-    if (newTickets > 0) {
-        db[playerKey].tickets += newTickets;
+    
+    // Каждые 10 игр = 1 мешочек, игры при этом уменьшаются
+    while (db[playerKey].games >= 10) {
+        db[playerKey].tickets += 1;
+        db[playerKey].games -= 10;
     }
 }
 
