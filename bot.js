@@ -1067,13 +1067,15 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
     
-       if (cmd === '.пауза лот') {
+    if (cmd === '.пауза лот') {
+        console.log('🔧 Команда .пауза лот получена, game.active =', game.active);
         if (!game.active) {
             await sendMessage(chatId, '❌ Нет активного лота');
             return;
         }
         game.paused = true;
-        await sendMessage(chatId, `⏸️ *ЛОТ ОСТАНОВЛЕН АДМИНОМ* ⏸️\n\n${renderLot()}`);
+        console.log('✅ Лот поставлен на паузу, game.paused =', game.paused);
+        await sendMessage(chatId, `⏸️ *ЛОТ ОСТАНОВЛЕН* ⏸️\n\n${renderLot()}`);
         return;
     }
 
