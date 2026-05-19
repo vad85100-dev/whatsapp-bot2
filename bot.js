@@ -29,10 +29,20 @@ let lotInfo = {};
 const emj = ['0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '1️⃣1️⃣', '1️⃣2️⃣'];
 
 const styles = {
-    обезьянка: {
+        обезьянка: {
         h: '🦥🦥🦥1️⃣0️⃣0️⃣0️⃣➖5️⃣0️⃣0️⃣🦥🦥🦥\n🐿️🐿️🐿️🐿️🐿️🐿️🐿️🐿️🐿️\n🪵1️⃣🪵🪵1️⃣2️⃣0️⃣0️⃣🪵\n🦥2️⃣🦥🦥8️⃣0️⃣0️⃣🦥\n🌰3️⃣🌰🌰1️⃣0️⃣0️⃣0️⃣🌰\n🐿️4️⃣🐿️🐿️3️⃣🌰🌰🌰\n🪵5️⃣🪵🪵1️⃣0️⃣0️⃣0️⃣🪵\n🦥6️⃣🦥🦥5️⃣0️⃣0️⃣🦥\n🌰🌰🌰🌰🌰🌰🌰🌰🌰\n1️⃣\n2️⃣\n3️⃣\n4️⃣\n5️⃣\n6️⃣\n7️⃣\n8️⃣\n9️⃣\n🔟',
         i: '🦥',
-        price: { full: 1000, half: 500 }
+        price: { full: 1000, half: 500 },
+        maxNumbers: 12,
+        prizesCount: 6,
+        prizes: [
+            { place: 1, prize: 1000 },
+            { place: 2, prize: 5000 },
+            { place: 3, prize: 1000 },
+            { place: 4, prize: 2500 },
+            { place: 5, prize: 0 },
+            { place: 6, prize: 0 }
+        ]
     },
     рыжий: {
         h: '🦊🦊🦊1️⃣0️⃣0️⃣0️⃣➖5️⃣0️⃣0️⃣🦊🦊🦊\n🔥🔥🔥🔥🔥🔥🔥🔥🔥\n🍂1️⃣🍂🍂1️⃣2️⃣0️⃣0️⃣🍂\n🦊2️⃣🦊🦊8️⃣0️⃣0️⃣🦊\n🌾3️⃣🌾🌾1️⃣0️⃣0️⃣0️⃣🌾\n🍁4️⃣🍁🍁3️⃣🌾🌾🌾\n🪵5️⃣🪵🪵1️⃣0️⃣0️⃣0️⃣🪵\n🦊6️⃣🦊🦊5️⃣0️⃣0️⃣🦊\n🍂🍂🍂🍂🍂🍂🍂🍂🍂\n1️⃣\n2️⃣\n3️⃣\n4️⃣\n5️⃣\n6️⃣\n7️⃣\n8️⃣\n9️⃣',
@@ -388,26 +398,25 @@ async function generateReport(chatId) {
     }
     if (!adminStats) adminStats = '\nНет данных';
 
-    // Преобразуем дату в читаемый вид
-    let periodText = 'неизвестно';
+    // Форматируем дату начала периода
+    let startDate = 'неизвестно';
     if (stats.reportDate) {
         try {
-            const reportDate = new Date(stats.reportDate);
-            if (!isNaN(reportDate.getTime())) {
-                periodText = reportDate.toLocaleString('ru-RU', {
+            const d = new Date(stats.reportDate);
+            if (!isNaN(d.getTime())) {
+                startDate = d.toLocaleString('ru-RU', {
                     day: 'numeric',
                     month: 'numeric',
-                    year: 'numeric',
                     hour: '2-digit',
                     minute: '2-digit'
                 });
             }
-        } catch(e) {}
+        } catch(e) { console.error('Ошибка парсинга даты:', e); }
     }
 
     const generalReport = `📊 *ОТЧЕТ: ОБЩАЯ СТАТИСТИКА* 📊
 ━━━━━━━━━━━━━━━━━━
-📅 *Период:* ${periodText} — сейчас
+📅 *Период:* ${startDate} — сейчас
 ━━━━━━━━━━━━━━━━━━
 🎲 *Всего лотов:* ${stats.totalLots || 0}
 🎯 *Сыграно игр:* ${(stats.totalGames || 0).toFixed(1)}
@@ -420,6 +429,7 @@ async function generateReport(chatId) {
 
     await sendMessage(chatId, generalReport);
 
+    // Сбрасываем статистику, НО НЕ ТРОГАЕМ КОПИЛКУ И ИГРОКОВ
     stats = {
         totalLots: 0,
         adminLots: {},
@@ -1057,13 +1067,13 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
     
-    if (cmd === '.пауза лот') {
+       if (cmd === '.пауза лот') {
         if (!game.active) {
             await sendMessage(chatId, '❌ Нет активного лота');
             return;
         }
         game.paused = true;
-        await sendMessage(chatId, `⏸️ *ЛОТ НА ПАУЗЕ* ⏸️\n\n${renderLot()}`);
+        await sendMessage(chatId, `⏸️ *ЛОТ ОСТАНОВЛЕН АДМИНОМ* ⏸️\n\n${renderLot()}`);
         return;
     }
 
