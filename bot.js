@@ -16,6 +16,8 @@ let game = { active: false, paused: false, style: 'обезьянка', slots: {
 let piggyBank = 0;
 let dailyPayoutDone = false;
 
+let piggyHistory = [];  // массив для хранения истории разбитий копилки
+
 let stats = {
     totalLots: 0,
     adminLots: {},
@@ -292,10 +294,6 @@ function showPiggy(chatId) {
 }
 
 function breakPiggy(chatId) {
-    if (dailyPayoutDone) {
-        sendMessage(chatId, `⚠️ Копилка уже разбита сегодня. Завтра новая!`);
-        return;
-    }
     const participants = [];
     for (let key in db) if (db[key]?.tickets && db[key].tickets > 0) participants.push({ key, tickets: db[key].tickets });
     if (participants.length === 0 || piggyBank === 0) {
@@ -311,8 +309,19 @@ function breakPiggy(chatId) {
         db[p.key].tickets = 0;
         msg += `\n${getDisplayName(p.key)} — ${winnings}₽ (${p.tickets} меш.)`;
     }
+    
+// Сохраняем в историю
+piggyHistory.push({
+    date: new Date().toISOString(),
+    amount: piggyBank,
+    participants: participants.map(p => ({
+        name: getDisplayName(p.key),
+        tickets: p.tickets,
+        winnings: Math.floor((piggyBank / totalTickets) * p.tickets)
+    }))
+});
+    
     piggyBank = 0;
-    dailyPayoutDone = true;
     msg += `\n\n━━━━━━━━━━━━━━━━━━\n🎉 ПОЗДРАВЛЯЕМ! 🎉`;
     sendMessage(chatId, msg);
 }
@@ -510,16 +519,16 @@ async function generateReport(chatId) {
 }
 
 async function exportData(chatId) {
-    const exportObj = {
-        version: '1.0',
-        timestamp: new Date().toISOString(),
-        db: db,
-        game: { active: game.active, paused: game.paused, style: game.style, slots: game.slots, max: game.max, repeat: game.repeat, startedBy: game.startedBy },
-        piggyBank: piggyBank,
-        dailyPayoutDone: dailyPayoutDone,
-        stats: stats,
-        lotInfo: lotInfo
-    };
+const exportObj = {
+    version: '1.0',
+    timestamp: new Date().toISOString(),
+    db: db,
+    game: { active: game.active, paused: game.paused, style: game.style, slots: game.slots, max: game.max, repeat: game.repeat, startedBy: game.startedBy },
+    piggyBank: piggyBank,
+    piggyHistory: piggyHistory,  // ← добавить
+    stats: stats,
+    lotInfo: lotInfo
+};
     const jsonStr = JSON.stringify(exportObj);
     await sendMessage(chatId, `📦 *ЭКСПОРТ ДАННЫХ*\n━━━━━━━━━━━━━━━━━━\nДля восстановления используй команду:\n.вставить [JSON]\n\nДанные:\n${jsonStr}`);
 }
@@ -542,7 +551,8 @@ async function importData(chatId, jsonStr) {
             repeat: data.game?.repeat || false,
             startedBy: data.game?.startedBy || null
         };
-        piggyBank = data.piggyBank || 0;
+        
+       piggyHistory = data.piggyHistory || [];
         dailyPayoutDone = data.dailyPayoutDone || false;
         stats = data.stats || { totalLots: 0, adminLots: {}, totalGames: 0, reportDate: new Date() };
         lotInfo = data.lotInfo || {};
