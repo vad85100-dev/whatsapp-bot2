@@ -1312,5 +1312,15 @@ app.post('/webhook', async (req, res) => {
     res.status(200).send('OK');
 });
 
+// Простой ответ при заходе на сайт
+app.get('/', (req, res) => {
+    res.send('✅ Бот для WhatsApp работает!');
+});
+
+// Для проверки живучести (пинг)
+app.get('/livez', (req, res) => {
+    res.status(200).send('OK');
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Бот на порту ${PORT}`));
