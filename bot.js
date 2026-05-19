@@ -728,11 +728,8 @@ async function handleMessage(chatId, sender, text, groupName) {
 🎟️ *МЕШОЧКИ*
 .мешочки [имя или ID] + [сумма]
 
-💳 *ДОЛГИ*
-.принять [имя или ID]
-.отказ [имя или ID]
-
 🎲 *ЛОТ*
+.номерки (ИМЯ ИЛИ ID)
 .стили
 .начать [стиль] [повтор]
 .список | .пауза | .продолжить
@@ -962,6 +959,60 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
 
+    if (cmd === '.номерки' && args && isAdminUser) {
+        const parts = args.trim().split(/\s+/);
+        let op = '';
+        let nameOrId = '';
+        let val = 0;
+        
+        // Поддерживаем форматы: "15 + 2", "+ 15 2", "Фаягуль + 2", "Фаягуль = 5"
+        if (parts.length >= 3) {
+            if (parts[1] === '+' || parts[1] === '-' || parts[1] === '=') {
+                nameOrId = parts[0];
+                op = parts[1];
+                val = parseFloat(parts[2]);
+            } else if (parts[0] === '+' || parts[0] === '-' || parts[0] === '=') {
+                op = parts[0];
+                nameOrId = parts[1];
+                val = parseFloat(parts[2]);
+            }
+        }
+        
+        if (!op || isNaN(val)) {
+            await sendMessage(chatId, '❌ .номерки [имя или ID] + [число] | .номерки [имя] = [число]\nПример: .номерки Фаягуль + 2\nПример: .номерки 15 = 5');
+            return;
+        }
+        
+        let key = getPlayerKey(nameOrId);
+        if (!key) {
+            await sendMessage(chatId, `❌ Игрок "${nameOrId}" не найден`);
+            return;
+        }
+        
+        let currentGames = db[key].games || 0;
+        let newGames = currentGames;
+        
+        if (op === '+') {
+            newGames = currentGames + val;
+        } else if (op === '-') {
+            newGames = currentGames - val;
+            if (newGames < 0) newGames = 0;
+        } else if (op === '=') {
+            newGames = val;
+            if (newGames < 0) newGames = 0;
+        }
+        
+        db[key].games = newGames;
+        
+        // Пересчитываем мешочки (каждые 10 игр = 1 мешочек)
+        const oldTickets = db[key].tickets || 0;
+        const newTickets = Math.floor(newGames / 10);
+        db[key].tickets = newTickets;
+        
+        await sendMessage(chatId, `🎲 *КОЛИЧЕСТВО ИГР ИЗМЕНЕНО*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}\n📉 Было игр: ${currentGames}\n📈 Стало игр: ${newGames}\n🎟️ Мешочков: ${oldTickets} → ${newTickets}`);
+        return;
+    }
+    
     if (cmd === '.средства' && args) {
         const op = args.includes('+') ? '+' : (args.includes('-') ? '-' : null);
         if (!op) {
