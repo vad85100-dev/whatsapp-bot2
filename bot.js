@@ -723,6 +723,7 @@ async function handleMessage(chatId, sender, text, groupName) {
 .отказ [имя или ID]
 
 🎲 *ЛОТ*
+.стили
 .начать [стиль] [повтор]
 .список | .пауза лот
 .победители [1 2 3 4 5 6]
@@ -1056,13 +1057,26 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
     
-      if (cmd === '.пауза лот') {
-        if (game.active) {
-            game.paused = true;
-            await sendMessage(chatId, `⏸️ *ЛОТ НА ПАУЗЕ* ⏸️\n\n${renderLot()}`);
-        } else {
+    if (cmd === '.пауза лот') {
+        if (!game.active) {
             await sendMessage(chatId, '❌ Нет активного лота');
+            return;
         }
+        game.paused = true;
+        await sendMessage(chatId, `⏸️ *ЛОТ НА ПАУЗЕ* ⏸️\n\n${renderLot()}`);
+        return;
+    }
+
+        if (cmd === '.стили') {
+        let stylesList = '🎨 *ДОСТУПНЫЕ СТИЛИ ЛОТОВ* 🎨\n━━━━━━━━━━━━━━━━━━\n';
+        for (const [name, style] of Object.entries(styles)) {
+            const price = style.price;
+            const maxNum = style.maxNumbers;
+            const prizesCount = style.prizesCount || 6;
+            stylesList += `\n📌 *${name.toUpperCase()}*\n   🎲 Номеров: ${maxNum}\n   🏆 Победителей: ${prizesCount}\n   💰 Цена: ${price.full}₽ / ${price.half}₽\n`;
+        }
+        stylesList += `\n━━━━━━━━━━━━━━━━━━\n💡 Команда: .начать [название_стиля] [повтор]`;
+        await sendMessage(chatId, stylesList);
         return;
     }
     
