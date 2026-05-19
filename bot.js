@@ -735,7 +735,7 @@ async function handleMessage(chatId, sender, text, groupName) {
 🎲 *ЛОТ*
 .стили
 .начать [стиль] [повтор]
-.список | .пауза лот
+.список | .пауза
 .победители [1 2 3 4 5 6]
 
 🐷 *КОПИЛКА*
@@ -1061,21 +1061,20 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
     
-    if (cmd === '.список') {
+ if (cmd === '.список') {
         if (game.active) await sendMessage(chatId, renderLot());
         else await sendMessage(chatId, '❌ Нет активного лота');
         return;
     }
     
-    if (cmd === '.пауза лот') {
-        console.log('🔧 Команда .пауза лот получена, game.active =', game.active);
+ if (cmd === '.пауза') {
+    sendMessage("проверка")
         if (!game.active) {
             await sendMessage(chatId, '❌ Нет активного лота');
             return;
         }
         game.paused = true;
-        console.log('✅ Лот поставлен на паузу, game.paused =', game.paused);
-        await sendMessage(chatId, `⏸️ *ЛОТ ОСТАНОВЛЕН* ⏸️\n\n${renderLot()}`);
+        await sendMessage(chatId, `⏸️ *ЛОТ ОСТАНОВЛЕН* ⏸️\n━━━━━━━━━━━━━━━━━━\nЛот завершён. Админ может объявить победителей:\n.победители [номера]\n\n${renderLot()}`);
         return;
     }
 
