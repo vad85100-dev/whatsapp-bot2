@@ -491,7 +491,7 @@ function renderLot(gameData, groupLotInfo, dbData) {
         if (!slot) {
             res += `${emoji}. 🟢\n`;
         } else if (slot.full) {
-            const playerKey = getPlayerKeyWithDb(slot.full, dbData);
+            const playerKey = getPlayerKey(slot.full, dbData);
             const displayName = playerKey ? getDisplayNameNoId(playerKey) : (slot.fullName || slot.full.split('|')[0]);
             res += `${emoji}. ${displayName}\n`;
         } else {
@@ -836,7 +836,7 @@ const playerKey = getPlayerKey(sender, db);
         return;
     }
     if (cmd === '/статистика') {
-        const playerKey = getPlayerKey(sender);
+        const playerKey = getPlayerKey(sender, db);
         if (!playerKey) {
             await sendMessage(chatId, `📊 *СТАТИСТИКА*\n━━━━━━━━━━━━━━━━━━\n👤 ${sender}\n🎲 Игр: 0\n🎟️ Меш.: 0\n🏆 Побед: 0\n💰 Баланс: 0₽\n\n💡 Напишите /регистрация`);
             return;
@@ -1710,6 +1710,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
         }
         return;
     }
+}
 app.post('/webhook', async (req, res) => {
     const wh = req.body;
     console.log('📩 Вебхук');
