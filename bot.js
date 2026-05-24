@@ -9,7 +9,61 @@ const API_TOKEN = process.env.API_TOKEN;
 const BOSS = 'P14';
 const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель 🧿', 'Галина Дубль', 'Евгения'];
 
-const ALLOWED_GROUPS = ['тестовая система автоматизации', 'Колесо Фортуны, резерв','У Фаягуль'];
+const ALLOWED_GROUPS = ['Штаб-БОТ'];
+
+// Мультигрупповая система
+let groups = {};  // { "chatId@g.us": { db, game, stats, lotInfo, piggyBank, piggyHistory } }
+
+// Система лицензий
+let licenses = {}; // { "chatId@g.us": { expireDate, plan, addedBy, addedAt } }
+
+// Функция получения данных группы
+function getGroupData(chatId) {
+    if (!groups[chatId]) {
+        groups[chatId] = {
+            db: {},
+            game: { active: false, paused: false, style: 'обезьянка', slots: {}, max: 0, repeat: false },
+            stats: { totalLots: 0, adminLots: {}, totalGames: 0, reportDate: new Date() },
+            lotInfo: {},
+            piggyBank: 0,
+            piggyHistory: []
+        };
+    }
+    return groups[chatId];
+}
+
+// Функция проверки лицензии
+function hasLicense(chatId) {
+    const license = licenses[chatId];
+    if (!license) return false;
+    const now = new Date();
+    const expireDate = new Date(license.expireDate);
+    return expireDate > now;
+}
+
+// Функция получения информации о лицензии
+function getLicenseInfo(chatId) {
+    const license = licenses[chatId];
+    if (!license) return null;
+    const expireDate = new Date(license.expireDate);
+    const daysLeft = Math.ceil((expireDate - new Date()) / (1000 * 60 * 60 * 24));
+    return { expireDate, daysLeft, plan: license.plan, addedBy: license.addedBy };
+}
+
+const fs = require('fs');
+
+// Загрузка лицензий
+try {
+    if (fs.existsSync('licenses.json')) {
+        licenses = JSON.parse(fs.readFileSync('licenses.json', 'utf8'));
+        console.log('✅ Лицензии загружены');
+    }
+} catch(e) { console.log('Нет файла лицензий'); }
+
+// Автосохранение лицензий
+setInterval(() => {
+    fs.writeFileSync('licenses.json', JSON.stringify(licenses, null, 2));
+}, 5 * 60 * 1000);
 
 let db = {};
 let game = { active: false, paused: false, style: 'обезьянка', slots: {}, max: 0, repeat: false };
@@ -632,53 +686,61 @@ async function generateReport(chatId) {
 }
 
 async function exportData(chatId) {
-const exportObj = {
-    version: '1.0',
-    timestamp: new Date().toISOString(),
-    db: db,
-    game: { active: game.active, paused: game.paused, style: game.style, slots: game.slots, max: game.max, repeat: game.repeat, startedBy: game.startedBy },
-    piggyBank: piggyBank,
-    piggyHistory: piggyHistory,  // ← добавить
-    stats: stats,
-    lotInfo: lotInfo
-};
+    const group = getGroupData(chatId);
+    const exportObj = {
+        version: '1.0',
+        timestamp: new Date().toISOString(),
+        db: group.db,
+        game: group.game,
+        piggyBank: group.piggyBank,
+        piggyHistory: group.piggyHistory,
+        stats: group.stats,
+        lotInfo: group.lotInfo
+    };
     const jsonStr = JSON.stringify(exportObj);
-    await sendMessage(chatId, `📦 *ЭКСПОРТ ДАННЫХ*\n━━━━━━━━━━━━━━━━━━\nДля восстановления используй команду:\n.вставить [JSON]\n\nДанные:\n${jsonStr}`);
+    await sendMessage(chatId, `📦 *ЭКСПОРТ ДАННЫХ*\n━━━━━━━━━━━━━━━━━━\n.вставить [JSON] для восстановления\n\n${jsonStr}`);
 }
 
 async function importData(chatId, jsonStr) {
     try {
         const data = JSON.parse(jsonStr);
         if (!data.db) {
-            await sendMessage(chatId, `❌ *ОШИБКА*: неверный формат JSON`);
+            await sendMessage(chatId, `❌ Неверный формат JSON`);
             return;
         }
-
-        db = data.db;
-        game = {
-            active: data.game?.active || false,
-            paused: data.game?.paused || false,
-            style: data.game?.style || 'обезьянка',
-            slots: data.game?.slots || {},
-            max: data.game?.max || 0,
-            repeat: data.game?.repeat || false,
-            startedBy: data.game?.startedBy || null
-        };
-        
-       piggyHistory = data.piggyHistory || [];
-        dailyPayoutDone = data.dailyPayoutDone || false;
-        stats = data.stats || { totalLots: 0, adminLots: {}, totalGames: 0, reportDate: new Date() };
-        lotInfo = data.lotInfo || {};
-
-        await sendMessage(chatId, `✅ *ИМПОРТ ВЫПОЛНЕН*\n━━━━━━━━━━━━━━━━━━\n📅 Версия: ${data.version || '1.0'}\n🕒 От: ${data.timestamp || 'неизвестно'}\n👥 Игроков: ${Object.keys(db).length}\n🐷 Копилка: ${piggyBank}₽`);
-
-        console.log(`✅ Импорт данных выполнен боссом ${BOSS}`);
+        const group = getGroupData(chatId);
+        group.db = data.db;
+        group.game = data.game || { active: false, paused: false, style: 'обезьянка', slots: {}, max: 0, repeat: false };
+        group.piggyBank = data.piggyBank || 0;
+        group.piggyHistory = data.piggyHistory || [];
+        group.stats = data.stats || { totalLots: 0, adminLots: {}, totalGames: 0, reportDate: new Date() };
+        group.lotInfo = data.lotInfo || {};
+        await sendMessage(chatId, `✅ *ИМПОРТ ВЫПОЛНЕН*\n👥 Игроков: ${Object.keys(group.db).length}\n🐷 Копилка: ${group.piggyBank}₽`);
     } catch (err) {
-        await sendMessage(chatId, `❌ *ОШИБКА ИМПОРТА*\n━━━━━━━━━━━━━━━━━━\n${err.message}\n\nПроверь правильность JSON.`);
+        await sendMessage(chatId, `❌ Ошибка: ${err.message}`);
     }
 }
-
 async function handleMessage(chatId, sender, text, groupName) {
+
+// Получаем данные для этой группы
+const group = getGroupData(chatId);
+let db = group.db;
+let game = group.game;
+let stats = group.stats;
+let lotInfo = group.lotInfo;
+let piggyBank = group.piggyBank;
+let piggyHistory = group.piggyHistory;
+
+// Проверка лицензии (если группа не в списке разрешённых и не босс)
+const isLicensed = hasLicense(chatId);
+const isBossHere = sender === BOSS;
+
+if (!isLicensed && !isBossHere && !ALLOWED_GROUPS.includes(groupName)) {
+    await sendMessage(chatId, `❌ *ГРУППА НЕ АКТИВИРОВАНА*\n━━━━━━━━━━━━━━━━━━\nДля использования бота необходима лицензия.\n\n💰 Стоимость: от 5000₽/месяц\n📞 Для активации обратитесь к @${BOSS}`);
+    return;
+}
+
+    
     let rawCmd = text.trim().toLowerCase();
     let cmd = rawCmd;
     let args = '';
@@ -1114,6 +1176,80 @@ for (const bet of validBets) {
         await sendMessage(chatId, msg);
         return;
     }
+
+// ===== ЛИЦЕНЗИИ =====
+if (cmd === '.лицензия' && args && sender === BOSS) {
+    const parts = args.trim().split(/\s+/);
+    
+    if (parts[0] === 'список') {
+        const list = Object.entries(licenses);
+        if (list.length === 0) {
+            await sendMessage(chatId, '📭 Нет активных лицензий');
+            return;
+        }
+        let msg = '📜 *ЛИЦЕНЗИИ*\n━━━━━━━━━━━━━━━━━━\n';
+        for (const [grp, lic] of list) {
+            const expireDate = new Date(lic.expireDate);
+            const daysLeft = Math.ceil((expireDate - new Date()) / (1000 * 60 * 60 * 24));
+            msg += `\n📌 ${grp}\n   ⏰ Осталось: ${daysLeft} дн.\n   👤 Добавил: ${lic.addedBy}\n`;
+        }
+        await sendMessage(chatId, msg);
+        return;
+    }
+    
+    if (parts[0] === 'удалить' && parts[1]) {
+        const targetChatId = parts[1];
+        if (licenses[targetChatId]) {
+            delete licenses[targetChatId];
+            await sendMessage(chatId, `🗑️ Лицензия для ${targetChatId} удалена`);
+        } else {
+            await sendMessage(chatId, `❌ Лицензия для ${targetChatId} не найдена`);
+        }
+        return;
+    }
+    
+    // Формат: .лицензия название_группы 30
+    if (parts.length >= 2) {
+        const targetChatId = parts[0];
+        const days = parseInt(parts[1]);
+        
+        if (isNaN(days) || days <= 0) {
+            await sendMessage(chatId, '❌ Укажите корректное количество дней');
+            return;
+        }
+        
+        const expireDate = new Date();
+        expireDate.setDate(expireDate.getDate() + days);
+        
+        licenses[targetChatId] = {
+            expireDate: expireDate.toISOString(),
+            plan: 'premium',
+            addedBy: sender,
+            addedAt: new Date().toISOString()
+        };
+        
+        await sendMessage(chatId, `✅ *ЛИЦЕНЗИЯ ДОБАВЛЕНА*\n━━━━━━━━━━━━━━━━━━\n📌 Группа: ${targetChatId}\n📅 До: ${expireDate.toLocaleDateString()}\n⏰ Срок: ${days} дней`);
+        
+        // Отправляем уведомление в группу
+        try {
+            await sendMessage(targetChatId, `🎉 *ГРУППА АКТИВИРОВАНА!*\n━━━━━━━━━━━━━━━━━━\nБот активирован на ${days} дней.\nДо: ${expireDate.toLocaleDateString()}\n\nПриятной игры! 🎲`);
+        } catch(e) {}
+        return;
+    }
+    
+    await sendMessage(chatId, '❌ *ЛИЦЕНЗИЯ*\n━━━━━━━━━━━━━━━━━━\n.лицензия [chatId] [дни]\n.лицензия список\n.лицензия удалить [chatId]');
+    return;
+}
+
+if (cmd === '.моя_лицензия' && isAdminUser) {
+    const info = getLicenseInfo(chatId);
+    if (info && info.daysLeft > 0) {
+        await sendMessage(chatId, `✅ *СТАТУС ЛИЦЕНЗИИ*\n━━━━━━━━━━━━━━━━━━\n📅 Действует до: ${info.expireDate.toLocaleDateString()}\n⏰ Осталось: ${info.daysLeft} дн.\n📋 Тариф: ${info.plan}`);
+    } else {
+        await sendMessage(chatId, `❌ *ЛИЦЕНЗИЯ ОТСУТСТВУЕТ*\n━━━━━━━━━━━━━━━━━━\nГруппа не активирована.\nОбратитесь к администратору.`);
+    }
+    return;
+}
     
     if (cmd === '.инфо' && !args && isAdminUser) {
         const info = lotInfo[sender];
