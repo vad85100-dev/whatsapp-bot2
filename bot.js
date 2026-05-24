@@ -36,14 +36,24 @@ function getGroupData(chatId) {
 }
 
 // Функция проверки лицензии
-function hasLicense(chatId) {
-    const license = licenses[chatId];
-    if (!license) return false;
-    const now = new Date();
-    const expireDate = new Date(license.expireDate);
-    return expireDate > now;
+function hasLicense(chatId, groupName) {
+    // Ищем по ID группы или по названию (в нижнем регистре)
+    const licenseById = licenses[chatId];
+    if (licenseById) {
+        const expireDate = new Date(licenseById.expireDate);
+        return expireDate > new Date();
+    }
+    
+    // Ищем по названию группы (в нижнем регистре)
+    const groupNameLower = groupName.toLowerCase();
+    for (const [key, lic] of Object.entries(licenses)) {
+        if (key.toLowerCase() === groupNameLower) {
+            const expireDate = new Date(lic.expireDate);
+            return expireDate > new Date();
+        }
+    }
+    return false;
 }
-
 // Штаб-группы (могут управлять лицензиями)
 const HEADQUARTERS_GROUPS = ['Штаб-БОТ'];
 
@@ -729,7 +739,7 @@ piggyBank = group.piggyBank;
 piggyHistory = group.piggyHistory;
 
 // Проверка лицензии (если группа не в списке разрешённых и не босс)
-const isLicensed = hasLicense(chatId);
+const isLicensed = hasLicense(chatId, groupName);
 const isBossHere = sender === BOSS;
 
 if (!isLicensed && !isBossHere && !ALLOWED_GROUPS.includes(groupName)) {
@@ -1176,12 +1186,11 @@ for (const bet of validBets) {
 
 // ===== ЛИЦЕНЗИИ =====
 if (cmd === '.лицензия' && args) {
-if (!isHeadquarters(groupName) && sender !== BOSS) {
+    if (!isHeadquarters(groupName) && sender !== BOSS) {
         await sendMessage(chatId, `❌ *ДОСТУП ЗАПРЕЩЁН*`);
         return;
     }
     
-    // Поддерживаем кавычки для названий с пробелами
     let parts = [];
     let match;
     const regex = /"([^"]+)"|'([^']+)'|(\S+)/g;
@@ -1207,22 +1216,29 @@ if (!isHeadquarters(groupName) && sender !== BOSS) {
         return;
     }
     
-    // .лицензия удалить группа
+    // .лицензия удалить
     if (parts[0] === 'удалить' && parts[1]) {
-        const targetChatId = parts[1];
-        if (licenses[targetChatId]) {
-            delete licenses[targetChatId];
-            await sendMessage(chatId, `🗑️ Лицензия для ${targetChatId} удалена`);
+        const targetChatId = parts[1].toLowerCase();
+        let found = false;
+        for (const [key, lic] of Object.entries(licenses)) {
+            if (key.toLowerCase() === targetChatId) {
+                delete licenses[key];
+                found = true;
+                break;
+            }
+        }
+        if (found) {
+            await sendMessage(chatId, `🗑️ Лицензия для ${parts[1]} удалена`);
             await saveLicenses();
         } else {
-            await sendMessage(chatId, `❌ Лицензия для ${targetChatId} не найдена`);
+            await sendMessage(chatId, `❌ Лицензия для ${parts[1]} не найдена`);
         }
         return;
     }
     
-    // .лицензия "Название группы" дни
+    // .лицензия "Название" дни
     if (parts.length >= 2) {
-        const targetChatId = parts[0];
+        const targetChatId = parts[0].toLowerCase();
         const days = parseInt(parts[1]);
         
         if (isNaN(days) || days <= 0) {
@@ -1240,10 +1256,10 @@ if (!isHeadquarters(groupName) && sender !== BOSS) {
             addedAt: new Date().toISOString()
         };
         
-        await sendMessage(chatId, `✅ *ЛИЦЕНЗИЯ ДОБАВЛЕНА*\n━━━━━━━━━━━━━━━━━━\n📌 Группа: ${targetChatId}\n📅 До: ${expireDate.toLocaleDateString()}\n⏰ Срок: ${days} дней`);
+        await sendMessage(chatId, `✅ *ЛИЦЕНЗИЯ ДОБАВЛЕНА*\n━━━━━━━━━━━━━━━━━━\n📌 Группа: ${parts[0]}\n📅 До: ${expireDate.toLocaleDateString()}\n⏰ Срок: ${days} дней`);
         
         try {
-            await sendMessage(targetChatId, `🎉 *ГРУППА АКТИВИРОВАНА!*\n━━━━━━━━━━━━━━━━━━\nБот активирован на ${days} дней.\nДо: ${expireDate.toLocaleDateString()}\n\nПриятной игры! 🎲`);
+            await sendMessage(chatId, `🎉 *ГРУППА АКТИВИРОВАНА!*`);
         } catch(e) {}
         
         await saveLicenses();
