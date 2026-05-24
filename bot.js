@@ -1708,7 +1708,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
         }
         return;
     }
-
+}
 app.post('/webhook', async (req, res) => {
     const wh = req.body;
     console.log('📩 Вебхук');
