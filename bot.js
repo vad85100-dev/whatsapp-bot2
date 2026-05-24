@@ -74,7 +74,7 @@ function getLicenseInfo(chatId) {
     return { expireDate, daysLeft, plan: license.plan, addedBy: license.addedBy };
 }
 
-function getPlayerKeyWithDb(nameOrId, dbData) {
+function getPlayerKey(nameOrId, dbData) {
     if (!nameOrId) return null;
 
     const idNum = parseInt(nameOrId);
@@ -368,51 +368,26 @@ function getDisplayNameNoId(playerKey) {
     return playerKey.split(' (')[0];
 }
 
-function getPlayerKey(nameOrId) {
-    if (!nameOrId) return null;
-
-    const idNum = parseInt(nameOrId);
-    if (!isNaN(idNum)) {
-        return Object.keys(db).find(key => db[key]?.id === idNum);
-    }
-
-    const searchName = nameOrId.toLowerCase().trim();
-    let exactMatch = Object.keys(db).find(key => {
-        const keyName = key.split(' (')[0].toLowerCase().trim();
-        return keyName === searchName;
-    });
-
-    if (exactMatch) return exactMatch;
-
-    const normalizedSearch = nameOrId.toLowerCase().replace(/[^a-zа-яё0-9]/g, '').trim();
-    return Object.keys(db).find(key => {
-        const keyName = key.split(' (')[0].toLowerCase().replace(/[^a-zа-яё0-9]/g, '').trim();
-        return keyName === normalizedSearch;
-    });
-}
-
-function ensurePlayer(name) {
-    let key = getPlayerKey(name);
+function ensurePlayer(name, dbData) {
+    let key = getPlayerKey(name, dbData);
     if (!key) {
-        const existingIds = Object.values(db).map(p => p.id || 0);
+        const existingIds = Object.values(dbData).map(p => p.id || 0);
         const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 9;
         const newId = maxId + 1;
 
         key = `${name} (auto)`;
-        db[key] = { balance: 0, games: 0, tickets: 0, wins: 0, id: newId };
+        dbData[key] = { balance: 0, games: 0, tickets: 0, wins: 0, id: newId };
     }
     return key;
 }
-
-function getDisplayName(playerKey) {
+function getDisplayName(playerKey, dbData) {
     if (!playerKey) return 'Неизвестно';
     const name = playerKey.split(' (')[0];
-    const id = db[playerKey]?.id;
+    const id = dbData[playerKey]?.id;
     if (id) return `${name} (${id})`;
     return name;
 }
-
-function isAdmin(sender) {
+function isAdmin(sender, dbData) {
     if (sender === BOSS) return true;
 
     const normalizedSender = sender.toLowerCase().replace(/^~/, '').replace(/[^a-zа-яё0-9]/g, '').trim();
@@ -422,26 +397,24 @@ function isAdmin(sender) {
         return normalizedAdmin === normalizedSender;
     })) return true;
 
-    const playerKey = getPlayerKey(sender);
-    if (playerKey && db[playerKey]?.isAdmin === true) return true;
+    const playerKey = getPlayerKey(sender, dbData);
+    if (playerKey && dbData[playerKey]?.isAdmin === true) return true;
 
     return false;
 }
 
-function addGamePlay(playerKey, value) {
-    if (!db[playerKey]) return;
-    if (!db[playerKey].games) db[playerKey].games = 0;
-    if (!db[playerKey].tickets) db[playerKey].tickets = 0;
+function addGamePlay(playerKey, value, dbData) {
+    if (!dbData[playerKey]) return;
+    if (!dbData[playerKey].games) dbData[playerKey].games = 0;
+    if (!dbData[playerKey].tickets) dbData[playerKey].tickets = 0;
     
-    db[playerKey].games += value;
+    dbData[playerKey].games += value;
     
-    // Каждые 10 игр = 1 мешочек, игры при этом уменьшаются
-    while (db[playerKey].games >= 10) {
-        db[playerKey].tickets += 1;
-        db[playerKey].games -= 10;
+    while (dbData[playerKey].games >= 10) {
+        dbData[playerKey].tickets += 1;
+        dbData[playerKey].games -= 10;
     }
 }
-
 function showPiggy(chatId) {
     let totalTickets = 0;
     for (let key in db) if (db[key]?.tickets) totalTickets += db[key].tickets;
@@ -481,7 +454,7 @@ piggyHistory.push({
     sendMessage(chatId, msg);
 }
 
-function renderLot(gameData, groupLotInfo) {
+function renderLot(gameData, groupLotInfo, dbData) {
     const s = styles[gameData.style];
     const p = s.price;
     const repeatText = gameData.repeat ? ' 🔁 *ЛОТ С ПОВТОРОМ* 🔁' : '';
@@ -503,12 +476,12 @@ function renderLot(gameData, groupLotInfo) {
         if (!slot) {
             res += `${emoji}. 🟢\n`;
         } else if (slot.full) {
-            const playerKey = getPlayerKey(slot.full);
+            const playerKey = getPlayerKeyWithDb(slot.full, dbData);
             const displayName = playerKey ? getDisplayNameNoId(playerKey) : (slot.fullName || slot.full.split('|')[0]);
             res += `${emoji}. ${displayName}\n`;
         } else {
-            const leftName = slot.left ? (getPlayerKey(slot.left) ? getDisplayNameNoId(getPlayerKey(slot.left)) : (slot.leftName || slot.left.split('|')[0])) : null;
-            const rightName = slot.right ? (getPlayerKey(slot.right) ? getDisplayNameNoId(getPlayerKey(slot.right)) : (slot.rightName || slot.right.split('|')[0])) : null;
+            const leftName = slot.left ? (getPlayerKeyWithDb(slot.left, dbData) ? getDisplayNameNoId(getPlayerKeyWithDb(slot.left, dbData)) : (slot.leftName || slot.left.split('|')[0])) : null;
+            const rightName = slot.right ? (getPlayerKeyWithDb(slot.right, dbData) ? getDisplayNameNoId(getPlayerKeyWithDb(slot.right, dbData)) : (slot.rightName || slot.right.split('|')[0])) : null;
             
             if (leftName && rightName) {
                 res += `${emoji}. ${leftName} / ${rightName}\n`;
@@ -776,8 +749,8 @@ async function handleMessage(chatId, sender, text, groupName) {
         args = rawCmd.substring(spaceIdx + 1).trim();
     }
 
-    const isAdminUser = isAdmin(sender);
-    const playerExists = getPlayerKey(sender) !== null;
+  const isAdminUser = isAdmin(sender, db);
+const playerExists = getPlayerKey(sender, db) !== null;
 
     // ===== ПРОВЕРКА РЕГИСТРАЦИИ =====
     if (!playerExists && cmd.startsWith('/') && cmd !== '/регистрация') {
@@ -806,7 +779,7 @@ async function handleMessage(chatId, sender, text, groupName) {
 
     // ===== РЕГИСТРАЦИЯ =====
     if (cmd === '/регистрация') {
-        const existingKey = getPlayerKey(sender);
+const existingKey = getPlayerKey(sender, db);
         if (existingKey) {
             await sendMessage(chatId, `✅ *ВЫ УЖЕ ЗАРЕГИСТРИРОВАНЫ*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(existingKey)}\n💰 Баланс: ${db[existingKey]?.balance || 0}₽`);
             return;
@@ -834,7 +807,7 @@ async function handleMessage(chatId, sender, text, groupName) {
         return;
     }
     if (cmd === '/баланс') {
-        const playerKey = getPlayerKey(sender);
+const playerKey = getPlayerKey(sender, db);
         if (!playerKey) {
             await sendMessage(chatId, `💰 *БАЛАНС*\n━━━━━━━━━━━━━━━━━━\n👤 ${sender}\n💎 0₽\n\n💡 Напишите /регистрация`);
             return;
@@ -924,7 +897,7 @@ if (cmd === '/гадание') {
 
     // ===== СТАВКИ =====
     if (game.active && !game.paused && /^[\d,\/\\]+$/.test(cmd)) {
-        const playerKey = getPlayerKey(sender);
+const playerKey = getPlayerKey(sender, db);
         if (!playerKey) {
             await sendMessage(chatId, `❌ Игрок "${sender}" не зарегистрирован. Напишите /регистрация`);
             return;
@@ -1002,10 +975,10 @@ for (const bet of validBets) {
         // НАЧИСЛЕНИЕ ИГР ЗА СТАВКИ (исправлено!)
         for (const bet of validBets) {
             if (bet.type === 'full') {
-                addGamePlay(playerKey, 1);
+           addGamePlay(playerKey, 1, db);
                 stats.totalGames += 1;
             } else if (bet.type === 'half') {
-                addGamePlay(playerKey, 0.5);
+               addGamePlay(playerKey, 0.5, db);
                 stats.totalGames += 0.5;
             }
         }
@@ -1032,7 +1005,7 @@ for (const bet of validBets) {
             const price = bet.type === 'full' ? p.full : p.half;
             success += `🎲 Номер ${bet.num}${bet.type === 'half' ? '/' : ''} — ${price}₽\n`;
         }
-        success += `\n💰 Списано: ${totalCost}₽\n💰 Новый баланс: ${db[playerKey].balance}₽\n\n${renderLot(game, lotInfo)}`;
+        success += `\n💰 Списано: ${totalCost}₽\n💰 Новый баланс: ${db[playerKey].balance}₽\n\n${renderLot(game, lotInfo, db)}`;
         await sendMessage(chatId, success);
         return;
     }
@@ -1102,7 +1075,7 @@ for (const bet of validBets) {
         const targetName = args.trim();
         
         // Пытаемся найти игрока по ID или имени
-        let targetKey = getPlayerKey(targetName);
+        let targetKey = getPlayerKey(targetName, db);
         let targetId = null;
         let targetPlayerName = targetName;
         
@@ -1181,7 +1154,7 @@ for (const bet of validBets) {
         // Возвращаем деньги
         let playerKeyForBalance = targetKey;
         if (!playerKeyForBalance) {
-            playerKeyForBalance = ensurePlayer(targetPlayerName);
+   playerKeyForBalance = ensurePlayer(targetPlayerName, db);
         }
         
         if (playerKeyForBalance) {
@@ -1197,7 +1170,7 @@ for (const bet of validBets) {
         if (playerKeyForBalance) {
             msg += `\n💰 Новый баланс: ${db[playerKeyForBalance].balance}₽`;
         }
-        msg += `\n\n${renderLot(game, lotInfo)}`;
+        msg += `\n\n${renderLot(game, lotInfo, db)}`;
         
         await sendMessage(chatId, msg);
         return;
@@ -1340,7 +1313,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
             return;
         }
         
-        let key = getPlayerKey(nameOrId);
+        let key = getPlayerKey(nameOrId, db);
         if (!key) {
             await sendMessage(chatId, `❌ Игрок "${nameOrId}" не найден`);
             return;
@@ -1397,7 +1370,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
     }
 
     if (cmd === '.принять' && args) {
-        const key = getPlayerKey(args);
+        const key = getPlayerKey(args, db);
         if (!key) {
             await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
             return;
@@ -1413,7 +1386,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
     }
 
     if (cmd === '.админ' && args && sender === BOSS) {
-        const key = getPlayerKey(args);
+        const key = getPlayerKey(args, db);
         if (!key) {
             await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
             return;
@@ -1433,12 +1406,12 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
             return;
         }
         game.paused = false;
-        await sendMessage(chatId, `▶️ *ЛОТ ПРОДОЛЖЕН* ▶️\n━━━━━━━━━━━━━━━━━━\nСтавки снова принимаются!\n\n${renderLot(game, lotInfo)}`);
+        await sendMessage(chatId, `▶️ *ЛОТ ПРОДОЛЖЕН* ▶️\n━━━━━━━━━━━━━━━━━━\nСтавки снова принимаются!\n\n${renderLot(game, lotInfo, db)}`);
         return;
     }
     
     if (cmd === '.убрать админ' && args && sender === BOSS) {
-        const key = getPlayerKey(args);
+        const key = getPlayerKey(args, db);
         if (!key) {
             await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
             return;
@@ -1449,7 +1422,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
     }
 
     if (cmd === '.отказ' && args) {
-        const key = getPlayerKey(args);
+        const key = getPlayerKey(args, db);
         if (!key) {
             await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
             return;
@@ -1473,7 +1446,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
             return;
         }
 
-        let key = getPlayerKey(nameOrId);
+        let key = getPlayerKey(nameOrId, db);
         if (!key) {
             await sendMessage(chatId, `❌ *ИГРОК НЕ НАЙДЕН*\n━━━━━━━━━━━━━━━━━━\n👤 "${nameOrId}" отсутствует в базе участников.\n\n💡 Для регистрации игрок должен написать /регистрация`);
             return;
@@ -1508,7 +1481,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
             return;
         }
         
-        let key = getPlayerKey(nameOrId);
+        let key = getPlayerKey(nameOrId, db);
         if (!key) {
             await sendMessage(chatId, `❌ Игрок "${nameOrId}" не найден`);
             return;
@@ -1551,7 +1524,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
             return;
         }
 
-        let key = getPlayerKey(nameOrId);
+        let key = getPlayerKey(nameOrId, db);
         if (!key) {
             await sendMessage(chatId, `❌ *ИГРОК НЕ НАЙДЕН*\n━━━━━━━━━━━━━━━━━━\n👤 "${nameOrId}" отсутствует в базе участников.\n\n💡 Для регистрации игрок должен написать /регистрация`);
             return;
@@ -1612,7 +1585,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
     }
     
     if (cmd === '.поиск' && args) {
-        const key = getPlayerKey(args);
+        const key = getPlayerKey(args, db);
         if (!key) {
             await sendMessage(chatId, `❌ "${args}" не найден`);
             return;
@@ -1626,7 +1599,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
     }
     
     if (cmd === '.удалить' && args) {
-        const key = getPlayerKey(args);
+        const key = getPlayerKey(args, db);
         if (!key) {
             await sendMessage(chatId, `❌ "${args}" не найден`);
             return;
@@ -1652,7 +1625,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
                 repeat: isRepeat,
                 startedBy: sender
             };
-            await sendMessage(chatId, renderLot(game, lotInfo));
+            await sendMessage(chatId, renderLot(game, lotInfo, db));
         } else {
             await sendMessage(chatId, `❌ *ОШИБКА*\n━━━━━━━━━━━━━━━━━━\nСтиль "${styleName}" не найден.\nДоступные стили: ${Object.keys(styles).join(', ')}`);
         }
@@ -1660,7 +1633,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
     }
     
     if (cmd === '.список') {
-        if (game.active) await sendMessage(chatId, renderLot(game, lotInfo));
+        if (game.active) await sendMessage(chatId, renderLot(game, lotInfo, db));
         else await sendMessage(chatId, '❌ Нет активного лота');
         return;
     }
@@ -1671,7 +1644,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
             return;
         }
         game.paused = true;
-        await sendMessage(chatId, `⏸️ *ЛОТ ОСТАНОВЛЕН* ⏸️\n━━━━━━━━━━━━━━━━━━\nЛот завершён. Админ может объявить победителей:\n.победители [номера]\n\n${renderLot(game, lotInfo)}`);
+        await sendMessage(chatId, `⏸️ *ЛОТ ОСТАНОВЛЕН* ⏸️\n━━━━━━━━━━━━━━━━━━\nЛот завершён. Админ может объявить победителей:\n.победители [номера]\n\n${renderLot(game, lotInfo, db)}`);
         return;
     }
 
