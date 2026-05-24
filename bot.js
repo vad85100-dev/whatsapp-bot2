@@ -397,7 +397,19 @@ function ensurePlayer(name, dbData) {
 }
 function getDisplayName(playerKey, dbData) {
     if (!playerKey) return 'Неизвестно';
+    
+    // Если playerKey — не строка
+    if (typeof playerKey !== 'string') {
+        return 'Неизвестно';
+    }
+    
     const name = playerKey.split(' (')[0];
+    
+    // Проверяем существование ключа в dbData
+    if (!dbData || !dbData[playerKey]) {
+        return name;
+    }
+    
     const id = dbData[playerKey]?.id;
     if (id) return `${name} (${id})`;
     return name;
@@ -495,8 +507,8 @@ function renderLot(gameData, groupLotInfo, dbData) {
             const displayName = playerKey ? getDisplayNameNoId(playerKey) : (slot.fullName || slot.full.split('|')[0]);
             res += `${emoji}. ${displayName}\n`;
         } else {
-            const leftName = slot.left ? (getPlayerKeyWithDb(slot.left, dbData) ? getDisplayNameNoId(getPlayerKeyWithDb(slot.left, dbData)) : (slot.leftName || slot.left.split('|')[0])) : null;
-            const rightName = slot.right ? (getPlayerKeyWithDb(slot.right, dbData) ? getDisplayNameNoId(getPlayerKeyWithDb(slot.right, dbData)) : (slot.rightName || slot.right.split('|')[0])) : null;
+            const leftName = slot.left ? (getPlayerKey(slot.left, dbData) ? getDisplayNameNoId(getPlayerKey(slot.left, dbData)) : (slot.leftName || slot.left.split('|')[0])) : null;
+            const rightName = slot.right ? (getPlayerKey(slot.right, dbData) ? getDisplayNameNoId(getPlayerKey(slot.right, dbData)) : (slot.rightName || slot.right.split('|')[0])) : null;
             
             if (leftName && rightName) {
                 res += `${emoji}. ${leftName} / ${rightName}\n`;
@@ -577,7 +589,7 @@ async function payout(chatId, winners, adminName, groupGame, groupDb, groupStats
                 }
                 if (!playerKey) {
                     const playerName = slot.leftName || slot.left.split('|')[0];
-                    playerKey = getPlayerKeyWithDb(playerName, groupDb);
+                playerKey = getPlayerKey(playerName, groupDb);
                 }
                 
                 if (playerKey) {
@@ -922,7 +934,7 @@ if (cmd === '/гадание') {
     }
 
       // ===== СТАВКИ =====
-    if (cmd && /^[\d,\/\\]+$/.test(cmd)) {
+    if (cmd && /^[\d,\/\\]+$/.test(cmd) && !cmd.startsWith('.') && !cmd.startsWith('/')) {
         // Проверяем, активен ли лот
         if (!game.active) {
             await sendMessage(chatId, `❌ *ЛОТ НЕ АКТИВЕН*\n━━━━━━━━━━━━━━━━━━\nСначала запустите лот командой:\n.начать [название_стиля]`);
