@@ -1695,11 +1695,6 @@ app.post('/webhook', async (req, res) => {
     const text = wh.messageData?.textMessageData?.textMessage;
 
     const isGroup = chatId && chatId.includes('@g.us');
-    if (isGroup && groupName && ALLOWED_GROUPS.length && !ALLOWED_GROUPS.includes(groupName)) {
-        console.log(`⛔ Группа "${groupName}" не в списке`);
-        res.status(200).send('OK');
-        return;
-    }
 
     if (wh.typeWebhook === 'incomingMessageReceived' || wh.typeWebhook === 'outgoingMessageReceived') {
         if (chatId && text) await handleMessage(chatId, sender || chatId.split('@')[0], text, groupName);
