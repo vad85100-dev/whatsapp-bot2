@@ -747,9 +747,6 @@ async function handleMessage(chatId, sender, text, groupName) {
     piggyHistory = group.piggyHistory;
 
     // ДИАГНОСТИКА
-if (cmd === '7' || cmd === '6') {
-    console.log(`🔍 ДИАГНОСТИКА: cmd=${cmd}, game.active=${game.active}, game.paused=${game.paused}, game.max=${game.max}, game.style=${game.style}`);
-}
 
     // Проверка лицензии
     const isLicensed = hasLicense(chatId, groupName);
@@ -773,6 +770,12 @@ if (cmd === '7' || cmd === '6') {
 const playerExists = getPlayerKey(sender, db) !== null;
 
     // ===== ПРОВЕРКА РЕГИСТРАЦИИ =====
+
+    // ДИАГНОСТИКА
+    if (cmd === '7' || cmd === '6') {
+        console.log(`🔍 ДИАГНОСТИКА: cmd=${cmd}, game.active=${game.active}, game.paused=${game.paused}, game.max=${game.max}, game.style=${game.style}`);
+    }
+    
     if (!playerExists && cmd.startsWith('/') && cmd !== '/регистрация') {
         await sendMessage(chatId, `❌ *ДОСТУП ЗАПРЕЩЁН* ❌
 ━━━━━━━━━━━━━━━━━━
