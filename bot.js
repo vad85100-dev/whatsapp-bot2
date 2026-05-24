@@ -9,7 +9,7 @@ const API_TOKEN = process.env.API_TOKEN;
 const BOSS = 'P14';
 const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель 🧿', 'Галина Дубль', 'Евгения'];
 
-const ALLOWED_GROUPS = ['Штаб-БОТ'];
+const ALLOWED_GROUPS = ['Штаб-БОТ', 'Колесо Фортуны, резерв', 'У Фаягуль'];
 
 // Глобальные переменные для текущей группы (будут переопределяться в handleMessage)
 let db, game, stats, lotInfo, piggyBank, piggyHistory;
