@@ -1027,7 +1027,7 @@ for (const bet of validBets) {
             const price = bet.type === 'full' ? p.full : p.half;
             success += `🎲 Номер ${bet.num}${bet.type === 'half' ? '/' : ''} — ${price}₽\n`;
         }
-        success += `\n💰 Списано: ${totalCost}₽\n💰 Новый баланс: ${db[playerKey].balance}₽\n\n${renderLot()}`;
+        success += `\n💰 Списано: ${totalCost}₽\n💰 Новый баланс: ${db[playerKey].balance}₽\n\n${renderLot(game, lotInfo)}`;
         await sendMessage(chatId, success);
         return;
     }
@@ -1192,7 +1192,7 @@ for (const bet of validBets) {
         if (playerKeyForBalance) {
             msg += `\n💰 Новый баланс: ${db[playerKeyForBalance].balance}₽`;
         }
-        msg += `\n\n${renderLot()}`;
+        msg += `\n\n${renderLot(game, lotInfo)}`;
         
         await sendMessage(chatId, msg);
         return;
@@ -1428,7 +1428,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
             return;
         }
         game.paused = false;
-        await sendMessage(chatId, `▶️ *ЛОТ ПРОДОЛЖЕН* ▶️\n━━━━━━━━━━━━━━━━━━\nСтавки снова принимаются!\n\n${renderLot()}`);
+        await sendMessage(chatId, `▶️ *ЛОТ ПРОДОЛЖЕН* ▶️\n━━━━━━━━━━━━━━━━━━\nСтавки снова принимаются!\n\n${renderLot(game, lotInfo)}`);
         return;
     }
     
@@ -1647,7 +1647,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
                 repeat: isRepeat,
                 startedBy: sender
             };
-            await sendMessage(chatId, renderLot());
+            await sendMessage(chatId, renderLot(game, lotInfo));
         } else {
             await sendMessage(chatId, `❌ *ОШИБКА*\n━━━━━━━━━━━━━━━━━━\nСтиль "${styleName}" не найден.\nДоступные стили: ${Object.keys(styles).join(', ')}`);
         }
@@ -1655,7 +1655,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
     }
     
     if (cmd === '.список') {
-        if (game.active) await sendMessage(chatId, renderLot());
+        if (game.active) await sendMessage(chatId, renderLot(game, lotInfo));
         else await sendMessage(chatId, '❌ Нет активного лота');
         return;
     }
@@ -1666,7 +1666,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
             return;
         }
         game.paused = true;
-        await sendMessage(chatId, `⏸️ *ЛОТ ОСТАНОВЛЕН* ⏸️\n━━━━━━━━━━━━━━━━━━\nЛот завершён. Админ может объявить победителей:\n.победители [номера]\n\n${renderLot()}`);
+        await sendMessage(chatId, `⏸️ *ЛОТ ОСТАНОВЛЕН* ⏸️\n━━━━━━━━━━━━━━━━━━\nЛот завершён. Админ может объявить победителей:\n.победители [номера]\n\n${renderLot(game, lotInfo)}`);
         return;
     }
 
