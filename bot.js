@@ -1450,34 +1450,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
         return;
     }
 
-    if (cmd === '.принять' && args) {
-        const key = getPlayerKey(args, db);
-        if (!key) {
-            await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
-            return;
-        }
-        const current = db[key].balance || 0;
-        if (current >= 0) {
-            await sendMessage(chatId, `ℹ️ У ${getDisplayName(key)} нет долга (баланс: ${current}₽)`);
-            return;
-        }
-        db[key].balance = 0;
-        await sendMessage(chatId, `✅ *ОПЛАТА ПРИНЯТА*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}\n📉 Долг был: ${current}₽\n📈 Баланс обнулён`);
-        return;
-    }
-
-    if (cmd === '.админ' && args && sender === BOSS) {
-        const key = getPlayerKey(args, db);
-        if (!key) {
-            await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
-            return;
-        }
-        db[key].isAdmin = true;
-        await sendMessage(chatId, `✅ *АДМИН НАЗНАЧЕН*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}\nТеперь может использовать команды с точкой.`);
-        return;
-    }
-
-             if (cmd === '.продолжить') {
+       if (cmd === '.продолжить') {
         if (!game.active) {
             await sendMessage(chatId, '❌ Нет активного лота');
             return;
@@ -1493,132 +1466,6 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
         groups[chatId] = group;
         
         await sendMessage(chatId, `▶️ *ЛОТ ПРОДОЛЖЕН* ▶️\n━━━━━━━━━━━━━━━━━━\nСтавки снова принимаются!\n\n${renderLot(game, lotInfo, db)}`);
-        return;
-    }
-    
-    if (cmd === '.убрать админ' && args && sender === BOSS) {
-        const key = getPlayerKey(args, db);
-        if (!key) {
-            await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
-            return;
-        }
-        db[key].isAdmin = false;
-        await sendMessage(chatId, `🗑️ *АДМИН УБРАН*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}`);
-        return;
-    }
-
-    if (cmd === '.отказ' && args) {
-        const key = getPlayerKey(args, db);
-        if (!key) {
-            await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
-            return;
-        }
-        const current = db[key].balance || 0;
-        if (current >= 0) {
-            await sendMessage(chatId, `ℹ️ У ${getDisplayName(key)} нет долга (баланс: ${current}₽)`);
-            return;
-        }
-        db[key].balance = 0;
-        await sendMessage(chatId, `⛔ *ДОЛГ СПИСАН*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}\n📉 Долг: ${current}₽ → 0₽`);
-        return;
-    }
-
-    if (cmd === '.средства' && args && args.includes('=')) {
-        const parts = args.split('=');
-        let nameOrId = parts[0].trim();
-        let val = parseInt(parts[1].trim());
-        if (isNaN(val)) {
-            await sendMessage(chatId, '❌ Сумма не число');
-            return;
-        }
-
-        let key = getPlayerKey(nameOrId, db);
-        if (!key) {
-            await sendMessage(chatId, `❌ *ИГРОК НЕ НАЙДЕН*\n━━━━━━━━━━━━━━━━━━\n👤 "${nameOrId}" отсутствует в базе участников.\n\n💡 Для регистрации игрок должен написать /регистрация`);
-            return;
-        }
-
-        const old = db[key].balance || 0;
-        db[key].balance = val;
-        await sendMessage(chatId, `🟡 *КОРРЕКТИРОВКА БАЛАНСА*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}\n📉 Было: ${old}₽\n📈 Стало: ${db[key].balance}₽`);
-        return;
-    }
-
-    if (cmd === '.номерки' && args && isAdminUser) {
-        const parts = args.trim().split(/\s+/);
-        let op = '';
-        let nameOrId = '';
-        let val = 0;
-        
-        if (parts.length >= 3) {
-            if (parts[1] === '+' || parts[1] === '-' || parts[1] === '=') {
-                nameOrId = parts[0];
-                op = parts[1];
-                val = parseFloat(parts[2]);
-            } else if (parts[0] === '+' || parts[0] === '-' || parts[0] === '=') {
-                op = parts[0];
-                nameOrId = parts[1];
-                val = parseFloat(parts[2]);
-            }
-        }
-        
-        if (!op || isNaN(val)) {
-            await sendMessage(chatId, '❌ .номерки [имя или ID] + [число] | .номерки [имя] = [число]\nПример: .номерки Фаягуль + 2\nПример: .номерки 15 = 5');
-            return;
-        }
-        
-        let key = getPlayerKey(nameOrId, db);
-        if (!key) {
-            await sendMessage(chatId, `❌ Игрок "${nameOrId}" не найден`);
-            return;
-        }
-        
-        let currentGames = db[key].games || 0;
-        let newGames = currentGames;
-        
-        if (op === '+') {
-            newGames = currentGames + val;
-        } else if (op === '-') {
-            newGames = currentGames - val;
-            if (newGames < 0) newGames = 0;
-        } else if (op === '=') {
-            newGames = val;
-            if (newGames < 0) newGames = 0;
-        }
-        
-        db[key].games = newGames;
-        
-        const oldTickets = db[key].tickets || 0;
-        const newTickets = Math.floor(newGames / 10);
-        db[key].tickets = newTickets;
-        
-        await sendMessage(chatId, `🎲 *КОЛИЧЕСТВО ИГР ИЗМЕНЕНО*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}\n📉 Было игр: ${currentGames}\n📈 Стало игр: ${newGames}\n🎟️ Мешочков: ${oldTickets} → ${newTickets}`);
-        return;
-    }
-    
-    if (cmd === '.средства' && args) {
-        const op = args.includes('+') ? '+' : (args.includes('-') ? '-' : null);
-        if (!op) {
-            await sendMessage(chatId, '❌ .средства [имя или ID] +[сумма]');
-            return;
-        }
-        const parts = args.split(op);
-        let nameOrId = parts[0].trim();
-        let val = parseInt(parts[1]);
-        if (isNaN(val)) {
-            await sendMessage(chatId, '❌ Сумма не число');
-            return;
-        }
-
-        let key = getPlayerKey(nameOrId, db);
-        if (!key) {
-            await sendMessage(chatId, `❌ *ИГРОК НЕ НАЙДЕН*\n━━━━━━━━━━━━━━━━━━\n👤 "${nameOrId}" отсутствует в базе участников.\n\n💡 Для регистрации игрок должен написать /регистрация`);
-            return;
-        }
-
-        const old = db[key].balance || 0;
-        db[key].balance = op === '+' ? old + val : old - val;
-        await sendMessage(chatId, `${op === '+' ? '🟢 НАЧИСЛЕНО' : '🔴 СПИСАНО'} ${getDisplayName(key)}: ${old} → ${db[key].balance}₽`);
         return;
     }
 
@@ -1692,6 +1539,180 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
         }
         delete db[key];
         await sendMessage(chatId, `🗑️ *УДАЛЁН*\n👤 ${args}`);
+        return;
+    }
+
+    // ===== СТИЛИ =====
+    if (cmd === '.стили') {
+        let stylesList = '🎨 *ДОСТУПНЫЕ СТИЛИ ЛОТОВ* 🎨\n━━━━━━━━━━━━━━━━━━\n';
+        for (const [name, style] of Object.entries(styles)) {
+            const price = style.price;
+            const maxNum = style.maxNumbers;
+            const prizesCount = style.prizesCount || 6;
+            stylesList += `\n📌 *${name.toUpperCase()}*\n   🎲 Номеров: ${maxNum}\n   🏆 Победителей: ${prizesCount}\n   💰 Цена: ${price.full}₽ / ${price.half}₽\n`;
+        }
+        stylesList += `\n━━━━━━━━━━━━━━━━━━\n💡 Команда: .начать [название_стиля] [повтор]`;
+        await sendMessage(chatId, stylesList);
+        return;
+    }
+
+    // ===== НОМЕРКИ (ИЗМЕНЕНИЕ КОЛИЧЕСТВА ИГР) =====
+    if (cmd === '.номерки' && args && isAdminUser) {
+        const parts = args.trim().split(/\s+/);
+        let op = '';
+        let nameOrId = '';
+        let val = 0;
+        
+        if (parts.length >= 3) {
+            if (parts[1] === '+' || parts[1] === '-' || parts[1] === '=') {
+                nameOrId = parts[0];
+                op = parts[1];
+                val = parseFloat(parts[2]);
+            } else if (parts[0] === '+' || parts[0] === '-' || parts[0] === '=') {
+                op = parts[0];
+                nameOrId = parts[1];
+                val = parseFloat(parts[2]);
+            }
+        }
+        
+        if (!op || isNaN(val)) {
+            await sendMessage(chatId, '❌ .номерки [имя или ID] + [число] | .номерки [имя] = [число]\nПример: .номерки Фаягуль + 2');
+            return;
+        }
+        
+        let key = getPlayerKey(nameOrId, db);
+        if (!key) {
+            await sendMessage(chatId, `❌ Игрок "${nameOrId}" не найден`);
+            return;
+        }
+        
+        let currentGames = db[key].games || 0;
+        let newGames = currentGames;
+        
+        if (op === '+') {
+            newGames = currentGames + val;
+        } else if (op === '-') {
+            newGames = currentGames - val;
+            if (newGames < 0) newGames = 0;
+        } else if (op === '=') {
+            newGames = val;
+            if (newGames < 0) newGames = 0;
+        }
+        
+        db[key].games = newGames;
+        
+        const oldTickets = db[key].tickets || 0;
+        const newTickets = Math.floor(newGames / 10);
+        db[key].tickets = newTickets;
+        
+        await sendMessage(chatId, `🎲 *КОЛИЧЕСТВО ИГР ИЗМЕНЕНО*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}\n📉 Было игр: ${currentGames}\n📈 Стало игр: ${newGames}\n🎟️ Мешочков: ${oldTickets} → ${newTickets}`);
+        return;
+    }
+
+    // ===== ПРИНЯТЬ ДОЛГ =====
+    if (cmd === '.принять' && args) {
+        const key = getPlayerKey(args, db);
+        if (!key) {
+            await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
+            return;
+        }
+        const current = db[key].balance || 0;
+        if (current >= 0) {
+            await sendMessage(chatId, `ℹ️ У ${getDisplayName(key)} нет долга (баланс: ${current}₽)`);
+            return;
+        }
+        db[key].balance = 0;
+        await sendMessage(chatId, `✅ *ОПЛАТА ПРИНЯТА*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}\n📉 Долг был: ${current}₽\n📈 Баланс обнулён`);
+        return;
+    }
+
+    // ===== ОТКАЗ ОТ ДОЛГА (СПИСАНИЕ) =====
+    if (cmd === '.отказ' && args) {
+        const key = getPlayerKey(args, db);
+        if (!key) {
+            await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
+            return;
+        }
+        const current = db[key].balance || 0;
+        if (current >= 0) {
+            await sendMessage(chatId, `ℹ️ У ${getDisplayName(key)} нет долга (баланс: ${current}₽)`);
+            return;
+        }
+        db[key].balance = 0;
+        await sendMessage(chatId, `⛔ *ДОЛГ СПИСАН*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}\n📉 Долг: ${current}₽ → 0₽`);
+        return;
+    }
+
+    // ===== НАЗНАЧИТЬ АДМИНА =====
+    if (cmd === '.админ' && args && sender === BOSS) {
+        const key = getPlayerKey(args, db);
+        if (!key) {
+            await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
+            return;
+        }
+        db[key].isAdmin = true;
+        await sendMessage(chatId, `✅ *АДМИН НАЗНАЧЕН*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}\nТеперь может использовать команды с точкой.`);
+        return;
+    }
+
+    // ===== УБРАТЬ АДМИНА =====
+    if (cmd === '.убрать админ' && args && sender === BOSS) {
+        const key = getPlayerKey(args, db);
+        if (!key) {
+            await sendMessage(chatId, `❌ Игрок "${args}" не найден`);
+            return;
+        }
+        db[key].isAdmin = false;
+        await sendMessage(chatId, `🗑️ *АДМИН УБРАН*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}`);
+        return;
+    }
+
+    // ===== СРЕДСТВА (УСТАНОВКА БАЛАНСА) =====
+    if (cmd === '.средства' && args && args.includes('=')) {
+        const parts = args.split('=');
+        let nameOrId = parts[0].trim();
+        let val = parseInt(parts[1].trim());
+        if (isNaN(val)) {
+            await sendMessage(chatId, '❌ Сумма не число');
+            return;
+        }
+
+        let key = getPlayerKey(nameOrId, db);
+        if (!key) {
+            await sendMessage(chatId, `❌ *ИГРОК НЕ НАЙДЕН*\n━━━━━━━━━━━━━━━━━━\n👤 "${nameOrId}" отсутствует в базе участников.\n\n💡 Для регистрации игрок должен написать /регистрация`);
+            return;
+        }
+
+        const old = db[key].balance || 0;
+        db[key].balance = val;
+        await sendMessage(chatId, `🟡 *КОРРЕКТИРОВКА БАЛАНСА*\n━━━━━━━━━━━━━━━━━━\n👤 ${getDisplayName(key)}\n📉 Было: ${old}₽\n📈 Стало: ${db[key].balance}₽`);
+        return;
+    }
+
+    // ===== СРЕДСТВА (ПЛЮС/МИНУС) =====
+    if (cmd === '.средства' && args) {
+        const op = args.includes('+') ? '+' : (args.includes('-') ? '-' : null);
+        if (!op) {
+            await sendMessage(chatId, '❌ .средства [имя или ID] +[сумма]');
+            return;
+        }
+        const parts = args.split(op);
+        let nameOrId = parts[0].trim();
+        let val = parseInt(parts[1]);
+        if (isNaN(val)) {
+            await sendMessage(chatId, '❌ Сумма не число');
+            return;
+        }
+
+        let key = getPlayerKey(nameOrId, db);
+        if (!key) {
+            await sendMessage(chatId, `❌ *ИГРОК НЕ НАЙДЕН*\n━━━━━━━━━━━━━━━━━━\n👤 "${nameOrId}" отсутствует в базе участников.\n\n💡 Для регистрации игрок должен написать /регистрация`);
+            return;
+        }
+
+        const old = db[key].balance || 0;
+        db[key].balance = op === '+' ? old + val : old - val;
+        await sendMessage(chatId, `${op === '+' ? '🟢 НАЧИСЛЕНО' : '🔴 СПИСАНО'} ${getDisplayName(key)}: ${old} → ${db[key].balance}₽`);
         return;
     }
     
