@@ -981,99 +981,110 @@ for (const bet of validBets) {
         await sendMessage(chatId, `✅ *ИНФОРМАЦИЯ СОХРАНЕНА*\n━━━━━━━━━━━━━━━━━━\n👤 ${sender}\n📝 *Текст:*\n${args}`);
         return;
     }
-  if (cmd === '.снять' && args && game.active) {
-    const targetName = args.trim();
-    
-    // Пытаемся найти игрока по ID или имени
-    let targetKey = getPlayerKey(targetName);
-    let targetId = null;
-    let targetPlayerName = targetName;
-    
-    if (targetKey && db[targetKey]) {
-        targetId = db[targetKey].id;
-        targetPlayerName = targetKey.split(' (')[0];
-    }
-    
-    let removedBets = [];
-    let totalRefund = 0;
-    const p = styles[game.style].price;
-    
-    // Функция проверки совпадения
-    function matchesPlayer(slotValue) {
-        if (!slotValue) return false;
-        // По ID
-        if (targetId && slotValue.includes(`id:${targetId}`)) return true;
-        // По имени (без учёта регистра)
-        if (slotValue.toLowerCase().includes(targetName.toLowerCase())) return true;
-        // По ключу игрока
-        if (targetKey && slotValue.includes(targetKey)) return true;
-        return false;
-    }
-    
-    for (let i = 1; i <= game.max; i++) {
-        const slot = game.slots[i];
-        if (!slot) continue;
+      if (cmd === '.снять' && args && game.active) {
+        const targetName = args.trim();
         
-        // Полная ставка
-        if (slot.full && matchesPlayer(slot.full)) {
-            delete game.slots[i];
-            removedBets.push({ num: i, type: 'full', price: p.full, playerName: slot.fullName || slot.full });
-            totalRefund += p.full;
-            continue;
+        // Пытаемся найти игрока по ID или имени
+        let targetKey = getPlayerKey(targetName);
+        let targetId = null;
+        let targetPlayerName = targetName;
+        
+        if (targetKey && db[targetKey]) {
+            targetId = db[targetKey].id;
+            targetPlayerName = targetKey.split(' (')[0];
         }
         
-        // Левая половинка
-        if (slot.left && matchesPlayer(slot.left)) {
-            delete slot.left;
-            delete slot.leftId;
-            delete slot.leftName;
-            removedBets.push({ num: i, type: 'половинка (левая)', price: p.half, playerName: slot.leftName || slot.left });
-            totalRefund += p.half;
-            if (!slot.left && !slot.right) delete game.slots[i];
-            continue;
+        let removedBets = [];
+        let totalRefund = 0;
+        const p = styles[game.style].price;
+        
+        // ИСПРАВЛЕННАЯ ФУНКЦИЯ ПОИСКА
+        function matchesPlayer(slotValue) {
+            if (!slotValue) return false;
+            
+            // Если у нас есть ID цели — ищем точное совпадение по ID в строке
+            if (targetId) {
+                // Ищем формат "id:123"
+                const idMatch = slotValue.match(/id:(\d+)/);
+                if (idMatch && parseInt(idMatch[1]) === targetId) return true;
+            }
+            
+            // Если нет targetId — ищем по точному совпадению имени (без учёта регистра)
+            if (slotValue.toLowerCase() === targetName.toLowerCase()) return true;
+            
+            // Проверяем, не совпадает ли полное имя (originalName) из слота
+            if (slotValue.includes('|')) {
+                const originalName = slotValue.split('|')[0];
+                if (originalName.toLowerCase() === targetName.toLowerCase()) return true;
+            }
+            
+            return false;
         }
         
-        // Правая половинка
-        if (slot.right && matchesPlayer(slot.right)) {
-            delete slot.right;
-            delete slot.rightId;
-            delete slot.rightName;
-            removedBets.push({ num: i, type: 'половинка (правая)', price: p.half, playerName: slot.rightName || slot.right });
-            totalRefund += p.half;
-            if (!slot.left && !slot.right) delete game.slots[i];
-            continue;
+        for (let i = 1; i <= game.max; i++) {
+            const slot = game.slots[i];
+            if (!slot) continue;
+            
+            // Полная ставка
+            if (slot.full && matchesPlayer(slot.full)) {
+                delete game.slots[i];
+                removedBets.push({ num: i, type: 'full', price: p.full, playerName: slot.fullName || slot.full });
+                totalRefund += p.full;
+                continue;
+            }
+            
+            // Левая половинка
+            if (slot.left && matchesPlayer(slot.left)) {
+                delete slot.left;
+                delete slot.leftId;
+                delete slot.leftName;
+                removedBets.push({ num: i, type: 'половинка (левая)', price: p.half, playerName: slot.leftName || slot.left });
+                totalRefund += p.half;
+                if (!slot.left && !slot.right) delete game.slots[i];
+                continue;
+            }
+            
+            // Правая половинка
+            if (slot.right && matchesPlayer(slot.right)) {
+                delete slot.right;
+                delete slot.rightId;
+                delete slot.rightName;
+                removedBets.push({ num: i, type: 'половинка (правая)', price: p.half, playerName: slot.rightName || slot.right });
+                totalRefund += p.half;
+                if (!slot.left && !slot.right) delete game.slots[i];
+                continue;
+            }
         }
-    }
-    
-    if (removedBets.length === 0) {
-        await sendMessage(chatId, `❌ У игрока ${targetPlayerName} нет ставок в текущем лоте`);
+        
+        if (removedBets.length === 0) {
+            await sendMessage(chatId, `❌ У игрока ${targetPlayerName} нет ставок в текущем лоте`);
+            return;
+        }
+        
+        // Возвращаем деньги
+        let playerKeyForBalance = targetKey;
+        if (!playerKeyForBalance) {
+            playerKeyForBalance = ensurePlayer(targetPlayerName);
+        }
+        
+        if (playerKeyForBalance) {
+            db[playerKeyForBalance].balance = (db[playerKeyForBalance].balance || 0) + totalRefund;
+        }
+        
+        // Формируем сообщение
+        let msg = `🗑️ *СНЯТИЕ СТАВОК* 🗑️\n━━━━━━━━━━━━━━━━━━\n👤 Игрок: ${targetPlayerName}\n🎲 Снято ставок: ${removedBets.length}\n\n`;
+        for (const bet of removedBets) {
+            msg += `   🔸 Номер ${bet.num} (${bet.type}) — ${bet.price}₽\n`;
+        }
+        msg += `\n💰 ВОЗВРАЩЕНО: ${totalRefund}₽`;
+        if (playerKeyForBalance) {
+            msg += `\n💰 Новый баланс: ${db[playerKeyForBalance].balance}₽`;
+        }
+        msg += `\n\n${renderLot()}`;
+        
+        await sendMessage(chatId, msg);
         return;
     }
-    
-    // Возвращаем деньги
-    let playerKeyForBalance = targetKey;
-    if (!playerKeyForBalance) {
-        playerKeyForBalance = ensurePlayer(targetPlayerName);
-    }
-    
-    if (playerKeyForBalance) {
-        db[playerKeyForBalance].balance = (db[playerKeyForBalance].balance || 0) + totalRefund;
-    }
-    
-    // Формируем сообщение
-    let msg = `🗑️ *СНЯТИЕ СТАВОК* 🗑️\n━━━━━━━━━━━━━━━━━━\n👤 Игрок: ${targetPlayerName}\n🎲 Снято ставок: ${removedBets.length}\n\n`;
-    for (const bet of removedBets) {
-        msg += `   🔸 Номер ${bet.num} (${bet.type}) — ${bet.price}₽\n`;
-    }
-    msg += `\n💰 ВОЗВРАЩЕНО: ${totalRefund}₽`;
-    if (playerKeyForBalance) {
-        msg += `\n💰 Новый баланс: ${db[playerKeyForBalance].balance}₽`;
-    }
-    msg += `\n\n${renderLot()}`;
-    
-    await sendMessage(chatId, msg);
-    return;
-}
     
     if (cmd === '.инфо' && !args && isAdminUser) {
         const info = lotInfo[sender];
