@@ -1075,56 +1075,6 @@ for (const bet of validBets) {
     return;
 }
     
-    const playerName = getDisplayNameNoId(targetKey);
-    let removedBets = [];
-    let totalRefund = 0;
-    const p = styles[game.style].price;
-    
-    // Проходим по всем слотам и ищем ставки игрока
-    for (let i = 1; i <= game.max; i++) {
-        const slot = game.slots[i];
-        if (!slot) continue;
-        
-        // Полная ставка
-        if (slot.full === targetKey || slot.full === targetName) {
-            delete game.slots[i];
-            removedBets.push({ num: i, type: 'full', price: p.full });
-            totalRefund += p.full;
-        }
-        // Левый половинка
-        else if (slot.left === targetKey || slot.left === targetName) {
-            delete slot.left;
-            removedBets.push({ num: i, type: 'half (левая)', price: p.half });
-            totalRefund += p.half;
-            if (!slot.left && !slot.right) delete game.slots[i];
-        }
-        // Правый половинка
-        else if (slot.right === targetKey || slot.right === targetName) {
-            delete slot.right;
-            removedBets.push({ num: i, type: 'half (правая)', price: p.half });
-            totalRefund += p.half;
-            if (!slot.left && !slot.right) delete game.slots[i];
-        }
-    }
-    
-    if (removedBets.length === 0) {
-        await sendMessage(chatId, `❌ У игрока ${playerName} нет ставок в текущем лоте`);
-        return;
-    }
-    
-    // Возвращаем деньги
-    db[targetKey].balance = (db[targetKey].balance || 0) + totalRefund;
-    
-    // Формируем сообщение
-    let msg = `🗑️ *УДАЛЕНИЕ СТАВОК* 🗑️\n━━━━━━━━━━━━━━━━━━\n👤 Игрок: ${playerName}\n🎲 Удалено ставок: ${removedBets.length}\n\n`;
-    for (const bet of removedBets) {
-        msg += `   🔸 Номер ${bet.num} (${bet.type}) — ${bet.price}₽\n`;
-    }
-    msg += `\n💰 ВОЗВРАЩЕНО: ${totalRefund}₽\n💰 Новый баланс: ${db[targetKey].balance}₽\n\n${renderLot()}`;
-    
-    await sendMessage(chatId, msg);
-    return;
-}
     if (cmd === '.инфо' && !args && isAdminUser) {
         const info = lotInfo[sender];
         if (info) {
