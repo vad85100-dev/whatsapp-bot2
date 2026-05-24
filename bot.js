@@ -99,6 +99,21 @@ function getPlayerKey(nameOrId, dbData) {
 
 const fs = require('fs');
 
+// Загрузка данных групп из файла
+try {
+    if (fs.existsSync('groups_backup.json')) {
+        const backup = JSON.parse(fs.readFileSync('groups_backup.json', 'utf8'));
+        groups = backup;
+        console.log('✅ Данные групп восстановлены из бэкапа');
+    }
+} catch(e) { console.log('Нет бэкапа групп'); }
+
+// Автосохранение данных групп (каждые 30 секунд)
+setInterval(() => {
+    fs.writeFileSync('groups_backup.json', JSON.stringify(groups, null, 2));
+    console.log('💾 Данные групп сохранены');
+}, 30 * 1000);
+
 // Загрузка лицензий
 try {
     if (fs.existsSync('licenses.json')) {
@@ -731,6 +746,11 @@ async function handleMessage(chatId, sender, text, groupName) {
     piggyBank = group.piggyBank;
     piggyHistory = group.piggyHistory;
 
+    // ДИАГНОСТИКА
+if (cmd === '7' || cmd === '6') {
+    console.log(`🔍 ДИАГНОСТИКА: cmd=${cmd}, game.active=${game.active}, game.paused=${game.paused}, game.max=${game.max}, game.style=${game.style}`);
+}
+
     // Проверка лицензии
     const isLicensed = hasLicense(chatId, groupName);
     const isBossHere = sender === BOSS;
@@ -895,9 +915,20 @@ if (cmd === '/гадание') {
         return;
     }
 
-    // ===== СТАВКИ =====
-    if (game.active && !game.paused && /^[\d,\/\\]+$/.test(cmd)) {
-const playerKey = getPlayerKey(sender, db);
+      // ===== СТАВКИ =====
+    if (cmd && /^[\d,\/\\]+$/.test(cmd)) {
+        // Проверяем, активен ли лот
+        if (!game.active) {
+            await sendMessage(chatId, `❌ *ЛОТ НЕ АКТИВЕН*\n━━━━━━━━━━━━━━━━━━\nСначала запустите лот командой:\n.начать [название_стиля]`);
+            return;
+        }
+        
+        if (game.paused) {
+            await sendMessage(chatId, `❌ *ЛОТ НА ПАУЗЕ*\n━━━━━━━━━━━━━━━━━━\nДождитесь продолжения или завершения лота.`);
+            return;
+        }
+        
+        const playerKey = getPlayerKey(sender, db);
         if (!playerKey) {
             await sendMessage(chatId, `❌ Игрок "${sender}" не зарегистрирован. Напишите /регистрация`);
             return;
@@ -949,36 +980,36 @@ const playerKey = getPlayerKey(sender, db);
 
         db[playerKey].balance = (db[playerKey].balance || 0) - totalCost;
 
-// Получаем ID игрока для привязки
-const playerId = db[playerKey]?.id || null;
-const playerIdentifier = playerId ? `${sender}|id:${playerId}` : sender;
+        // Получаем ID игрока для привязки
+        const playerId = db[playerKey]?.id || null;
+        const playerIdentifier = playerId ? `${sender}|id:${playerId}` : sender;
 
-for (const bet of validBets) {
-    if (!game.slots[bet.num]) game.slots[bet.num] = {};
-    if (bet.type === 'full') {
-        game.slots[bet.num].full = playerIdentifier;
-        game.slots[bet.num].fullId = playerId;
-        game.slots[bet.num].fullName = sender;
-    } else if (bet.type === 'half') {
-        if (!game.slots[bet.num].left) {
-            game.slots[bet.num].left = playerIdentifier;
-            game.slots[bet.num].leftId = playerId;
-            game.slots[bet.num].leftName = sender;
-        } else if (!game.slots[bet.num].right) {
-            game.slots[bet.num].right = playerIdentifier;
-            game.slots[bet.num].rightId = playerId;
-            game.slots[bet.num].rightName = sender;
+        for (const bet of validBets) {
+            if (!game.slots[bet.num]) game.slots[bet.num] = {};
+            if (bet.type === 'full') {
+                game.slots[bet.num].full = playerIdentifier;
+                game.slots[bet.num].fullId = playerId;
+                game.slots[bet.num].fullName = sender;
+            } else if (bet.type === 'half') {
+                if (!game.slots[bet.num].left) {
+                    game.slots[bet.num].left = playerIdentifier;
+                    game.slots[bet.num].leftId = playerId;
+                    game.slots[bet.num].leftName = sender;
+                } else if (!game.slots[bet.num].right) {
+                    game.slots[bet.num].right = playerIdentifier;
+                    game.slots[bet.num].rightId = playerId;
+                    game.slots[bet.num].rightName = sender;
+                }
+            }
         }
-    }
-}
 
-        // НАЧИСЛЕНИЕ ИГР ЗА СТАВКИ (исправлено!)
+        // НАЧИСЛЕНИЕ ИГР ЗА СТАВКИ
         for (const bet of validBets) {
             if (bet.type === 'full') {
-           addGamePlay(playerKey, 1, db);
+                addGamePlay(playerKey, 1, db);
                 stats.totalGames += 1;
             } else if (bet.type === 'half') {
-               addGamePlay(playerKey, 0.5, db);
+                addGamePlay(playerKey, 0.5, db);
                 stats.totalGames += 0.5;
             }
         }
@@ -1000,6 +1031,12 @@ for (const bet of validBets) {
             game.paused = true;
         }
 
+        // Сохраняем изменения в группе
+        group.db = db;
+        group.game = game;
+        group.stats = stats;
+        groups[chatId] = group;
+
         let success = `✅ *СТАВКИ ПРИНЯТЫ*\n━━━━━━━━━━━━━━━━━━\n`;
         for (const bet of validBets) {
             const price = bet.type === 'full' ? p.full : p.half;
@@ -1009,7 +1046,6 @@ for (const bet of validBets) {
         await sendMessage(chatId, success);
         return;
     }
-
     // ===== АДМИН-КОМАНДЫ =====
     if (!isAdminUser) {
         if (cmd.startsWith('/') && !['/бот', '/баланс', '/статистика', '/банк', '/гадание', '/новости', '/шутка', '/топ10', '/админы', '/регистрация'].includes(cmd)) {
