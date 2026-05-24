@@ -1556,6 +1556,35 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
         return;
     }
 
+        // ===== ПОБЕДИТЕЛИ (ВЫПЛАТА) =====
+    if (cmd === '.победители' && args && game.paused) {
+        const wins = args.match(/\d+/g);
+        if (wins && wins.length) {
+            const missing = wins.filter(n => !game.slots[n] || (!game.slots[n].full && !game.slots[n].left && !game.slots[n].right));
+            if (missing.length > 0) {
+                await sendMessage(chatId, `❌ *ОШИБКА*: номера ${missing.join(', ')} не имеют ставок!`);
+                return;
+            }
+            const result = await payout(chatId, wins, sender, game, db, stats, piggyBank);
+            game = result.groupGame;
+            db = result.groupDb;
+            stats = result.groupStats;
+            piggyBank = result.groupPiggyBank;
+            
+            // Сохраняем обратно в groups
+            group.game = game;
+            group.db = db;
+            group.stats = stats;
+            group.piggyBank = piggyBank;
+            groups[chatId] = group;
+            
+            await sendMessage(chatId, `✅ *ЛОТ ЗАВЕРШЁН*\n━━━━━━━━━━━━━━━━━━\nВыплата произведена.`);
+        } else {
+            await sendMessage(chatId, '❌ .победители 1 2 3 4 5 6');
+        }
+        return;
+    }
+
     // ===== НОМЕРКИ (ИЗМЕНЕНИЕ КОЛИЧЕСТВА ИГР) =====
     if (cmd === '.номерки' && args && isAdminUser) {
         const parts = args.trim().split(/\s+/);
