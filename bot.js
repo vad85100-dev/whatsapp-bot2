@@ -486,31 +486,39 @@ function renderLot(gameData, groupLotInfo) {
     const p = s.price;
     const repeatText = gameData.repeat ? ' 🔁 *ЛОТ С ПОВТОРОМ* 🔁' : '';
     
-    let res = s.h;
-    res = res.replace(/\{price_full\}/g, p.full);
-    res = res.replace(/\{price_half\}/g, p.half);
-    res += `\n✩⢄⢁✧ --------- ✧⡈⡠✩\n`;
+    // Призы
+    let res = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    res += `💰 *ЦЕНА: ${p.full}₽ / ${p.half}₽* 💰${repeatText}\n`;
+    res += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    res += `🏆 *ПРИЗЫ* 🏆\n`;
+    for (let i = 0; i < s.prizes.length; i++) {
+        if (s.prizes[i].prize > 0) {
+            res += `${s.prizes[i].place} место: ${s.prizes[i].prize}₽\n`;
+        }
+    }
+    res += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
     
+    // Номерки с игроками
     for (let i = 1; i <= gameData.max; i++) {
         const slot = gameData.slots[i];
         const emoji = emj[i] || i;
         
         if (!slot) {
-            res += `${emoji}. 🟢\n`;
+            res += `${emoji} 🟢\n`;
         } else if (slot.full) {
             const playerKey = getPlayerKey(slot.full);
             const displayName = playerKey ? getDisplayNameNoId(playerKey) : (slot.fullName || slot.full.split('|')[0]);
-            res += `${emoji}. ${displayName}\n`;
+            res += `${emoji} ${displayName}\n`;
         } else {
             const leftName = slot.left ? (getPlayerKey(slot.left) ? getDisplayNameNoId(getPlayerKey(slot.left)) : (slot.leftName || slot.left.split('|')[0])) : null;
             const rightName = slot.right ? (getPlayerKey(slot.right) ? getDisplayNameNoId(getPlayerKey(slot.right)) : (slot.rightName || slot.right.split('|')[0])) : null;
             
             if (leftName && rightName) {
-                res += `${emoji}. ${leftName} / ${rightName}\n`;
+                res += `${emoji} ${leftName} / ${rightName}\n`;
             } else if (leftName) {
-                res += `${emoji}. ${leftName} /\n`;
+                res += `${emoji} ${leftName} /\n`;
             } else if (rightName) {
-                res += `${emoji}. / ${rightName}\n`;
+                res += `${emoji} / ${rightName}\n`;
             }
         }
     }
