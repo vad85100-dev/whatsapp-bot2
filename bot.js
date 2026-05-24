@@ -969,14 +969,108 @@ if (cmd === '/гадание') {
         await sendMessage(chatId, `✅ *ИНФОРМАЦИЯ СОХРАНЕНА*\n━━━━━━━━━━━━━━━━━━\n👤 ${sender}\n📝 *Текст:*\n${args}`);
         return;
     }
-    if (cmd === '.убрать' && args && game.active && !game.paused) {
+   if (cmd === '.убрать' && args && game.active) {
     const targetName = args.trim();
+    
+    // Пытаемся найти игрока в базе
     let targetKey = getPlayerKey(targetName);
+    let searchName = targetName.toLowerCase();
     
     if (!targetKey) {
-        await sendMessage(chatId, `❌ Игрок "${targetName}" не найден в базе`);
+        // Если не нашли по базе, будем искать по имени в слотах (без привязки к базе)
+        targetKey = null;
+    }
+    
+    let removedBets = [];
+    let totalRefund = 0;
+    const p = styles[game.style].price;
+    
+    // Проходим по всем слотам
+    for (let i = 1; i <= game.max; i++) {
+        const slot = game.slots[i];
+        if (!slot) continue;
+        
+        // Проверяем полную ставку
+        if (slot.full) {
+            const slotName = slot.full.toLowerCase();
+            const matchesKey = targetKey && (slot.full === targetKey || slot.full.includes(targetKey.split(' (')[0]));
+            const matchesName = !targetKey && (slotName === searchName || slotName.includes(searchName));
+            
+            if (matchesKey || matchesName) {
+                delete game.slots[i];
+                removedBets.push({ num: i, type: 'full', price: p.full });
+                totalRefund += p.full;
+                continue;
+            }
+        }
+        
+        // Проверяем левую половинку
+        if (slot.left) {
+            const slotName = slot.left.toLowerCase();
+            const matchesKey = targetKey && (slot.left === targetKey || slot.left.includes(targetKey.split(' (')[0]));
+            const matchesName = !targetKey && (slotName === searchName || slotName.includes(searchName));
+            
+            if (matchesKey || matchesName) {
+                delete slot.left;
+                removedBets.push({ num: i, type: 'half (левая)', price: p.half });
+                totalRefund += p.half;
+                if (!slot.left && !slot.right) delete game.slots[i];
+                continue;
+            }
+        }
+        
+        // Проверяем правую половинку
+        if (slot.right) {
+            const slotName = slot.right.toLowerCase();
+            const matchesKey = targetKey && (slot.right === targetKey || slot.right.includes(targetKey.split(' (')[0]));
+            const matchesName = !targetKey && (slotName === searchName || slotName.includes(searchName));
+            
+            if (matchesKey || matchesName) {
+                delete slot.right;
+                removedBets.push({ num: i, type: 'half (правая)', price: p.half });
+                totalRefund += p.half;
+                if (!slot.left && !slot.right) delete game.slots[i];
+                continue;
+            }
+        }
+    }
+    
+    if (removedBets.length === 0) {
+        await sendMessage(chatId, `❌ У игрока ${targetName} нет ставок в текущем лоте`);
         return;
     }
+    
+    // Получаем ключ игрока для возврата денег (если нашли)
+    let playerKeyForBalance = targetKey;
+    if (!playerKeyForBalance) {
+        // Если не нашли в базе, создаём временного игрока
+        for (const bet of removedBets) {
+            // Пытаемся найти игрока по первому удалённому слоту
+            const slot = game.slots[bet.num];
+            // ... сложно, проще создать
+        }
+        playerKeyForBalance = ensurePlayer(targetName);
+    }
+    
+    // Возвращаем деньги
+    if (playerKeyForBalance) {
+        db[playerKeyForBalance].balance = (db[playerKeyForBalance].balance || 0) + totalRefund;
+    }
+    
+    // Формируем сообщение
+    let msg = `🗑️ *УДАЛЕНИЕ СТАВОК* 🗑️\n━━━━━━━━━━━━━━━━━━\n👤 Игрок: ${targetName}\n🎲 Удалено ставок: ${removedBets.length}\n\n`;
+    for (const bet of removedBets) {
+        msg += `   🔸 Номер ${bet.num} (${bet.type}) — ${bet.price}₽\n`;
+    }
+    msg += `\n💰 ВОЗВРАЩЕНО: ${totalRefund}₽`;
+    if (playerKeyForBalance) {
+        msg += `\n💰 Новый баланс: ${db[playerKeyForBalance].balance}₽`;
+    }
+    msg += `\n\n${renderLot()}`;
+    
+    await sendMessage(chatId, msg);
+    return;
+}
     
     const playerName = getDisplayNameNoId(targetKey);
     let removedBets = [];
