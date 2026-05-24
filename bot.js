@@ -74,6 +74,29 @@ function getLicenseInfo(chatId) {
     return { expireDate, daysLeft, plan: license.plan, addedBy: license.addedBy };
 }
 
+function getPlayerKeyWithDb(nameOrId, dbData) {
+    if (!nameOrId) return null;
+
+    const idNum = parseInt(nameOrId);
+    if (!isNaN(idNum)) {
+        return Object.keys(dbData).find(key => dbData[key]?.id === idNum);
+    }
+
+    const searchName = nameOrId.toLowerCase().trim();
+    let exactMatch = Object.keys(dbData).find(key => {
+        const keyName = key.split(' (')[0].toLowerCase().trim();
+        return keyName === searchName;
+    });
+
+    if (exactMatch) return exactMatch;
+
+    const normalizedSearch = nameOrId.toLowerCase().replace(/[^a-zа-яё0-9]/g, '').trim();
+    return Object.keys(dbData).find(key => {
+        const keyName = key.split(' (')[0].toLowerCase().replace(/[^a-zа-яё0-9]/g, '').trim();
+        return keyName === normalizedSearch;
+    });
+}
+
 const fs = require('fs');
 
 // Загрузка лицензий
@@ -458,23 +481,18 @@ piggyHistory.push({
     sendMessage(chatId, msg);
 }
 
-function renderLot() {
-    const s = styles[game.style];
+function renderLot(gameData, groupLotInfo) {
+    const s = styles[gameData.style];
     const p = s.price;
-    const repeatText = game.repeat ? ' 🔁 *ЛОТ С ПОВТОРОМ* 🔁' : '';
+    const repeatText = gameData.repeat ? ' 🔁 *ЛОТ С ПОВТОРОМ* 🔁' : '';
     
-    // Берём ТВОЁ красивое оформление
     let res = s.h;
-    
-    // Подставляем цены
     res = res.replace(/\{price_full\}/g, p.full);
     res = res.replace(/\{price_half\}/g, p.half);
-    
-    // Добавляем номерки с игроками ВНИЗУ (как в твоём примере)
     res += `\n✩⢄⢁✧ --------- ✧⡈⡠✩\n`;
     
-    for (let i = 1; i <= game.max; i++) {
-        const slot = game.slots[i];
+    for (let i = 1; i <= gameData.max; i++) {
+        const slot = gameData.slots[i];
         const emoji = emj[i] || i;
         
         if (!slot) {
@@ -497,17 +515,17 @@ function renderLot() {
         }
     }
     
-    if (game.paused) {
+    if (gameData.paused) {
         res += `\n⏸️ *ЛОТ НА ПАУЗЕ* ⏸️`;
-        if (game.startedBy && lotInfo[game.startedBy]) {
-            res += `\n📋 ${lotInfo[game.startedBy]}`;
+        if (gameData.startedBy && groupLotInfo[gameData.startedBy]) {
+            res += `\n📋 ${groupLotInfo[gameData.startedBy]}`;
         }
     }
     
     return res;
 }
-async function payout(chatId, winners, adminName) {
-    const s = styles[game.style];
+async function payout(chatId, winners, adminName, groupGame, groupDb, groupStats, groupPiggyBank) {
+    const s = styles[groupGame.style];
     
     const prizes = s.prizes || [
         { place: 1, prize: 1000 },
@@ -522,7 +540,7 @@ async function payout(chatId, winners, adminName) {
 
     for (let idx = 0; idx < Math.min(winners.length, prizes.length); idx++) {
         const num = winners[idx];
-        const slot = game.slots[num];
+        const slot = groupGame.slots[num];
         if (!slot) continue;
 
         let prizeMoney = prizes[idx].prize;
@@ -533,28 +551,25 @@ async function payout(chatId, winners, adminName) {
         }
 
         if (slot.full) {
-            // Ищем игрока по ID из slot.full или по имени
             let playerKey = null;
             
-            // Пытаемся вытащить ID из формата "имя|id:123"
             const idMatch = slot.full.match(/id:(\d+)/);
             if (idMatch) {
                 const playerId = parseInt(idMatch[1]);
-                playerKey = Object.keys(db).find(key => db[key]?.id === playerId);
+                playerKey = Object.keys(groupDb).find(key => groupDb[key]?.id === playerId);
             }
             
-            // Если не нашли по ID, ищем по имени
             if (!playerKey) {
                 const playerName = slot.fullName || slot.full.split('|')[0];
-                playerKey = getPlayerKey(playerName);
+                playerKey = getPlayerKeyWithDb(playerName, groupDb);
             }
             
             if (playerKey) {
-                db[playerKey].balance = (db[playerKey].balance || 0) + prizeMoney;
+                groupDb[playerKey].balance = (groupDb[playerKey].balance || 0) + prizeMoney;
                 winnersList.push(`${idx + 1}️⃣ ${getDisplayNameNoId(playerKey)} → +${prizeMoney}₽`);
                 total += prizeMoney;
-                if (!db[playerKey].wins) db[playerKey].wins = 0;
-                db[playerKey].wins++;
+                if (!groupDb[playerKey].wins) groupDb[playerKey].wins = 0;
+                groupDb[playerKey].wins++;
             } else {
                 winnersList.push(`${idx + 1}️⃣ ${slot.fullName || slot.full.split('|')[0]} → +${prizeMoney}₽ (не найден в базе)`);
                 total += prizeMoney;
@@ -565,19 +580,19 @@ async function payout(chatId, winners, adminName) {
                 const idMatch = slot.left.match(/id:(\d+)/);
                 if (idMatch) {
                     const playerId = parseInt(idMatch[1]);
-                    playerKey = Object.keys(db).find(key => db[key]?.id === playerId);
+                    playerKey = Object.keys(groupDb).find(key => groupDb[key]?.id === playerId);
                 }
                 if (!playerKey) {
                     const playerName = slot.leftName || slot.left.split('|')[0];
-                    playerKey = getPlayerKey(playerName);
+                    playerKey = getPlayerKeyWithDb(playerName, groupDb);
                 }
                 
                 if (playerKey) {
-                    db[playerKey].balance = (db[playerKey].balance || 0) + prizeMoney;
+                    groupDb[playerKey].balance = (groupDb[playerKey].balance || 0) + prizeMoney;
                     winnersList.push(`${idx + 1}️⃣ ${getDisplayNameNoId(playerKey)} → +${prizeMoney}₽ (левая)`);
                     total += prizeMoney;
-                    if (!db[playerKey].wins) db[playerKey].wins = 0;
-                    db[playerKey].wins++;
+                    if (!groupDb[playerKey].wins) groupDb[playerKey].wins = 0;
+                    groupDb[playerKey].wins++;
                 } else {
                     winnersList.push(`${idx + 1}️⃣ ${slot.leftName || slot.left.split('|')[0]} → +${prizeMoney}₽ (левая, не найден)`);
                     total += prizeMoney;
@@ -588,19 +603,19 @@ async function payout(chatId, winners, adminName) {
                 const idMatch = slot.right.match(/id:(\d+)/);
                 if (idMatch) {
                     const playerId = parseInt(idMatch[1]);
-                    playerKey = Object.keys(db).find(key => db[key]?.id === playerId);
+                    playerKey = Object.keys(groupDb).find(key => groupDb[key]?.id === playerId);
                 }
                 if (!playerKey) {
                     const playerName = slot.rightName || slot.right.split('|')[0];
-                    playerKey = getPlayerKey(playerName);
+                    playerKey = getPlayerKeyWithDb(playerName, groupDb);
                 }
                 
                 if (playerKey) {
-                    db[playerKey].balance = (db[playerKey].balance || 0) + prizeMoney;
+                    groupDb[playerKey].balance = (groupDb[playerKey].balance || 0) + prizeMoney;
                     winnersList.push(`${idx + 1}️⃣ ${getDisplayNameNoId(playerKey)} → +${prizeMoney}₽ (правая)`);
                     total += prizeMoney;
-                    if (!db[playerKey].wins) db[playerKey].wins = 0;
-                    db[playerKey].wins++;
+                    if (!groupDb[playerKey].wins) groupDb[playerKey].wins = 0;
+                    groupDb[playerKey].wins++;
                 } else {
                     winnersList.push(`${idx + 1}️⃣ ${slot.rightName || slot.right.split('|')[0]} → +${prizeMoney}₽ (правая, не найден)`);
                     total += prizeMoney;
@@ -619,15 +634,16 @@ async function payout(chatId, winners, adminName) {
     msg += `\n\n━━━━━━━━━━━━━━━━━━\n💰 *ОБЩИЙ ВЫИГРЫШ:* ${total}₽\n🐷 *В КОПИЛКУ:* +${piggyContribution}₽\n🎉 *ПОЗДРАВЛЯЕМ ПОБЕДИТЕЛЕЙ!* 🎉`;
     await sendMessage(chatId, msg);
 
-    piggyBank += piggyContribution;
-    stats.totalLots++;
-    if (!stats.adminLots) stats.adminLots = {};
-    stats.adminLots[adminName] = (stats.adminLots[adminName] || 0) + 1;
-    game.active = false;
-    game.paused = false;
-    game.slots = {};
+    groupPiggyBank += piggyContribution;
+    groupStats.totalLots++;
+    if (!groupStats.adminLots) groupStats.adminLots = {};
+    groupStats.adminLots[adminName] = (groupStats.adminLots[adminName] || 0) + 1;
+    groupGame.active = false;
+    groupGame.paused = false;
+    groupGame.slots = {};
+    
+    return { groupGame, groupDb, groupStats, groupPiggyBank };
 }
-
 async function generateReport(chatId) {
     const list = Object.entries(db);
     let memberReport = '👥 *ОТЧЕТ: УЧАСТНИКИ* 👥\n━━━━━━━━━━━━━━━━━━\n';
@@ -728,25 +744,23 @@ async function importData(chatId, jsonStr) {
     }
 }
 async function handleMessage(chatId, sender, text, groupName) {
+    // Получаем данные для этой группы
+    const group = getGroupData(chatId);
+    db = group.db;
+    game = group.game;
+    stats = group.stats;
+    lotInfo = group.lotInfo;
+    piggyBank = group.piggyBank;
+    piggyHistory = group.piggyHistory;
 
-// Получаем данные для этой группы
-const group = getGroupData(chatId);
-db = group.db;  // ← обновляем глобальную db
-game = group.game;
-stats = group.stats;
-lotInfo = group.lotInfo;
-piggyBank = group.piggyBank;
-piggyHistory = group.piggyHistory;
+    // Проверка лицензии
+    const isLicensed = hasLicense(chatId, groupName);
+    const isBossHere = sender === BOSS;
 
-// Проверка лицензии (если группа не в списке разрешённых и не босс)
-const isLicensed = hasLicense(chatId, groupName);
-const isBossHere = sender === BOSS;
-
-if (!isLicensed && !isBossHere && !ALLOWED_GROUPS.includes(groupName)) {
-    await sendMessage(chatId, `❌ *ГРУППА НЕ АКТИВИРОВАНА*\n━━━━━━━━━━━━━━━━━━\nДля использования бота необходима лицензия.\n\n💰 Стоимость: от 5000₽/месяц\n📞 Для активации обратитесь к @${BOSS}`);
-    return;
-}
-
+    if (!isLicensed && !isBossHere && !ALLOWED_GROUPS.includes(groupName)) {
+        await sendMessage(chatId, `❌ *ГРУППА НЕ АКТИВИРОВАНА*\n━━━━━━━━━━━━━━━━━━\nДля использования бота необходима лицензия.\n\n💰 Стоимость: от 5000₽/месяц\n📞 Для активации обратитесь к @${BOSS}`);
+        return;
+    }
     
     let rawCmd = text.trim().toLowerCase();
     let cmd = rawCmd;
@@ -1669,7 +1683,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
         return;
     }
     
-    if (cmd === '.победители' && args && game.paused) {
+        if (cmd === '.победители' && args && game.paused) {
         const wins = args.match(/\d+/g);
         if (wins && wins.length) {
             const missing = wins.filter(n => !game.slots[n] || (!game.slots[n].full && !game.slots[n].left && !game.slots[n].right));
@@ -1677,13 +1691,23 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
                 await sendMessage(chatId, `❌ *ОШИБКА*: номера ${missing.join(', ')} не имеют ставок!`);
                 return;
             }
-            await payout(chatId, wins, sender);
+            const result = await payout(chatId, wins, sender, game, db, stats, piggyBank);
+            game = result.groupGame;
+            db = result.groupDb;
+            stats = result.groupStats;
+            piggyBank = result.groupPiggyBank;
+            
+            // Сохраняем обратно в groups
+            group.game = game;
+            group.db = db;
+            group.stats = stats;
+            group.piggyBank = piggyBank;
+            groups[chatId] = group;
         } else {
             await sendMessage(chatId, '❌ .победители 12 8 3 5 2 7');
         }
         return;
     }
-}
 
 app.post('/webhook', async (req, res) => {
     const wh = req.body;
