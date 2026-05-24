@@ -1107,12 +1107,34 @@ if (cmd === '/гадание') {
         return;
     }
 
+    if (cmd === '.список') {
+        if (game.active) await sendMessage(chatId, renderLot(game, lotInfo, db));
+        else await sendMessage(chatId, '❌ Нет активного лота');
+        return;
+    }
+
     // ===== ИНФО =====
     if (cmd === '.инфо' && args && isAdminUser) {
         lotInfo[sender] = args;
         await sendMessage(chatId, `✅ *ИНФОРМАЦИЯ СОХРАНЕНА*\n━━━━━━━━━━━━━━━━━━\n👤 ${sender}\n📝 *Текст:*\n${args}`);
         return;
     }
+
+    if (cmd === '.пауза') {
+        if (!game.active) {
+            await sendMessage(chatId, '❌ Нет активного лота');
+            return;
+        }
+        game.paused = true;
+        
+        // СОХРАНЯЕМ В GROUP
+        group.game = game;
+        groups[chatId] = group;
+        
+        await sendMessage(chatId, `⏸️ *ЛОТ ОСТАНОВЛЕН* ⏸️\n━━━━━━━━━━━━━━━━━━\nЛот завершён. Админ может объявить победителей:\n.победители [номера]\n\n${renderLot(game, lotInfo, db)}`);
+        return;
+    }
+    
       if (cmd === '.снять' && args && game.active) {
         const targetName = args.trim();
         
@@ -1213,6 +1235,11 @@ if (cmd === '/гадание') {
             msg += `\n💰 Новый баланс: ${db[playerKeyForBalance].balance}₽`;
         }
         msg += `\n\n${renderLot(game, lotInfo, db)}`;
+        
+        // СОХРАНЯЕМ В GROUP
+        group.game = game;
+        group.db = db;
+        groups[chatId] = group;
         
         await sendMessage(chatId, msg);
         return;
@@ -1438,7 +1465,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
         return;
     }
 
-    if (cmd === '.продолжить') {
+             if (cmd === '.продолжить') {
         if (!game.active) {
             await sendMessage(chatId, '❌ Нет активного лота');
             return;
@@ -1448,6 +1475,11 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
             return;
         }
         game.paused = false;
+        
+        // СОХРАНЯЕМ В GROUP
+        group.game = game;
+        groups[chatId] = group;
+        
         await sendMessage(chatId, `▶️ *ЛОТ ПРОДОЛЖЕН* ▶️\n━━━━━━━━━━━━━━━━━━\nСтавки снова принимаются!\n\n${renderLot(game, lotInfo, db)}`);
         return;
     }
@@ -1651,7 +1683,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
         return;
     }
     
-    if (cmd === '.начать' && args) {
+     if (cmd === '.начать' && args) {
         const parts = args.trim().toLowerCase().split(/\s+/);
         const styleName = parts[0];
         const isRepeat = parts[1] === 'повтор';
@@ -1667,68 +1699,17 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
                 repeat: isRepeat,
                 startedBy: sender
             };
+            
+            // СОХРАНЯЕМ В GROUP
+            group.game = game;
+            groups[chatId] = group;
+            
             await sendMessage(chatId, renderLot(game, lotInfo, db));
         } else {
             await sendMessage(chatId, `❌ *ОШИБКА*\n━━━━━━━━━━━━━━━━━━\nСтиль "${styleName}" не найден.\nДоступные стили: ${Object.keys(styles).join(', ')}`);
         }
         return;
     }
-    
-    if (cmd === '.список') {
-        if (game.active) await sendMessage(chatId, renderLot(game, lotInfo, db));
-        else await sendMessage(chatId, '❌ Нет активного лота');
-        return;
-    }
-    
-    if (cmd === '.пауза') {
-        if (!game.active) {
-            await sendMessage(chatId, '❌ Нет активного лота');
-            return;
-        }
-        game.paused = true;
-        await sendMessage(chatId, `⏸️ *ЛОТ ОСТАНОВЛЕН* ⏸️\n━━━━━━━━━━━━━━━━━━\nЛот завершён. Админ может объявить победителей:\n.победители [номера]\n\n${renderLot(game, lotInfo, db)}`);
-        return;
-    }
-
-    if (cmd === '.стили') {
-        let stylesList = '🎨 *ДОСТУПНЫЕ СТИЛИ ЛОТОВ* 🎨\n━━━━━━━━━━━━━━━━━━\n';
-        for (const [name, style] of Object.entries(styles)) {
-            const price = style.price;
-            const maxNum = style.maxNumbers;
-            const prizesCount = style.prizesCount || 6;
-            stylesList += `\n📌 *${name.toUpperCase()}*\n   🎲 Номеров: ${maxNum}\n   🏆 Победителей: ${prizesCount}\n   💰 Цена: ${price.full}₽ / ${price.half}₽\n`;
-        }
-        stylesList += `\n━━━━━━━━━━━━━━━━━━\n💡 Команда: .начать [название_стиля] [повтор]`;
-        await sendMessage(chatId, stylesList);
-        return;
-    }
-    
-        if (cmd === '.победители' && args && game.paused) {
-        const wins = args.match(/\d+/g);
-        if (wins && wins.length) {
-            const missing = wins.filter(n => !game.slots[n] || (!game.slots[n].full && !game.slots[n].left && !game.slots[n].right));
-            if (missing.length > 0) {
-                await sendMessage(chatId, `❌ *ОШИБКА*: номера ${missing.join(', ')} не имеют ставок!`);
-                return;
-            }
-            const result = await payout(chatId, wins, sender, game, db, stats, piggyBank);
-            game = result.groupGame;
-            db = result.groupDb;
-            stats = result.groupStats;
-            piggyBank = result.groupPiggyBank;
-            
-            // Сохраняем обратно в groups
-            group.game = game;
-            group.db = db;
-            group.stats = stats;
-            group.piggyBank = piggyBank;
-            groups[chatId] = group;
-        } else {
-            await sendMessage(chatId, '❌ .победители 12 8 3 5 2 7');
-        }
-        return;
-    }
-}
 app.post('/webhook', async (req, res) => {
     const wh = req.body;
     console.log('📩 Вебхук');
