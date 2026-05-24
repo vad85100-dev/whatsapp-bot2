@@ -394,7 +394,7 @@ function renderLot() {
     res = res.replace(/\{price_full\}/g, p.full);
     res = res.replace(/\{price_half\}/g, p.half);
     
-    // Подставляем имена игроков в номера
+    // Подставляем имена игроков в номера (для блоков)
     for (let i = 1; i <= game.max; i++) {
         const slot = game.slots[i];
         let playerName = s.i + ' 🟢';
@@ -422,8 +422,8 @@ function renderLot() {
         res = res.replace(pattern, playerName);
     }
     
-    // ДОБАВЛЯЕМ НОМЕРА ВНИЗУ С ЗЕЛЁНЫМИ КРУЖОЧКАМИ!
-    let numbersLine = '\n\n✩⢄⢁✧ -----НОМЕРА----- ✧⡈⡠✩\n';
+    // ДОБАВЛЯЕМ НОМЕРА ВНИЗУ СТРОКОЙ (БЕЗ БЛОКОВ, ПРОСТО СПИСОК)
+    let numbersLine = '\n\n✩⢄⢁✧ ----- НОМЕРА ----- ✧⡈⡠✩\n';
     for (let i = 1; i <= game.max; i++) {
         const slot = game.slots[i];
         let isFree = true;
@@ -435,7 +435,6 @@ function renderLot() {
         } else {
             numbersLine += `${emj[i] || i} 🔴 `;
         }
-        if (i % 5 === 0) numbersLine += '\n';
     }
     
     res += numbersLine;
