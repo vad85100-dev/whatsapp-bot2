@@ -452,9 +452,7 @@ async function payout(chatId, winners, adminName) {
         { place: 1, prize: 1000 },
         { place: 2, prize: 5000 },
         { place: 3, prize: 1000 },
-        { place: 4, prize: 2500 },
-        { place: 5, prize: 0 },
-        { place: 6, prize: 0 }
+        { place: 4, prize: 2500 }
     ];
 
     let msg = `🏆 *ВЫПЛАТА ПОБЕДИТЕЛЯМ* 🏆\n━━━━━━━━━━━━━━━━━━\n`;
@@ -474,49 +472,82 @@ async function payout(chatId, winners, adminName) {
         }
 
         if (slot.full) {
-            const playerKey = getPlayerKey(slot.full);
+            // Ищем игрока по ID из slot.full или по имени
+            let playerKey = null;
+            
+            // Пытаемся вытащить ID из формата "имя|id:123"
+            const idMatch = slot.full.match(/id:(\d+)/);
+            if (idMatch) {
+                const playerId = parseInt(idMatch[1]);
+                playerKey = Object.keys(db).find(key => db[key]?.id === playerId);
+            }
+            
+            // Если не нашли по ID, ищем по имени
+            if (!playerKey) {
+                const playerName = slot.fullName || slot.full.split('|')[0];
+                playerKey = getPlayerKey(playerName);
+            }
+            
             if (playerKey) {
-                db[playerKey].balance += prizeMoney;
-                const playerDisplay = getDisplayNameNoId(playerKey);
-                winnersList.push(`${idx + 1}️⃣ ${playerDisplay} → +${prizeMoney}₽`);
+                db[playerKey].balance = (db[playerKey].balance || 0) + prizeMoney;
+                winnersList.push(`${idx + 1}️⃣ ${getDisplayNameNoId(playerKey)} → +${prizeMoney}₽`);
                 total += prizeMoney;
                 if (!db[playerKey].wins) db[playerKey].wins = 0;
                 db[playerKey].wins++;
             } else {
-                winnersList.push(`${idx + 1}️⃣ ${slot.fullName || slot.full.split('|')[0]} → +${prizeMoney}₽`);
+                winnersList.push(`${idx + 1}️⃣ ${slot.fullName || slot.full.split('|')[0]} → +${prizeMoney}₽ (не найден в базе)`);
                 total += prizeMoney;
             }
         } else {
             if (slot.left) {
-                const playerKey = getPlayerKey(slot.left);
+                let playerKey = null;
+                const idMatch = slot.left.match(/id:(\d+)/);
+                if (idMatch) {
+                    const playerId = parseInt(idMatch[1]);
+                    playerKey = Object.keys(db).find(key => db[key]?.id === playerId);
+                }
+                if (!playerKey) {
+                    const playerName = slot.leftName || slot.left.split('|')[0];
+                    playerKey = getPlayerKey(playerName);
+                }
+                
                 if (playerKey) {
-                    db[playerKey].balance += prizeMoney;
+                    db[playerKey].balance = (db[playerKey].balance || 0) + prizeMoney;
                     winnersList.push(`${idx + 1}️⃣ ${getDisplayNameNoId(playerKey)} → +${prizeMoney}₽ (левая)`);
                     total += prizeMoney;
                     if (!db[playerKey].wins) db[playerKey].wins = 0;
                     db[playerKey].wins++;
                 } else {
-                    winnersList.push(`${idx + 1}️⃣ ${slot.leftName || slot.left.split('|')[0]} → +${prizeMoney}₽ (левая)`);
+                    winnersList.push(`${idx + 1}️⃣ ${slot.leftName || slot.left.split('|')[0]} → +${prizeMoney}₽ (левая, не найден)`);
                     total += prizeMoney;
                 }
             }
             if (slot.right && slot.left !== slot.right) {
-                const playerKey = getPlayerKey(slot.right);
+                let playerKey = null;
+                const idMatch = slot.right.match(/id:(\d+)/);
+                if (idMatch) {
+                    const playerId = parseInt(idMatch[1]);
+                    playerKey = Object.keys(db).find(key => db[key]?.id === playerId);
+                }
+                if (!playerKey) {
+                    const playerName = slot.rightName || slot.right.split('|')[0];
+                    playerKey = getPlayerKey(playerName);
+                }
+                
                 if (playerKey) {
-                    db[playerKey].balance += prizeMoney;
+                    db[playerKey].balance = (db[playerKey].balance || 0) + prizeMoney;
                     winnersList.push(`${idx + 1}️⃣ ${getDisplayNameNoId(playerKey)} → +${prizeMoney}₽ (правая)`);
                     total += prizeMoney;
                     if (!db[playerKey].wins) db[playerKey].wins = 0;
                     db[playerKey].wins++;
                 } else {
-                    winnersList.push(`${idx + 1}️⃣ ${slot.rightName || slot.right.split('|')[0]} → +${prizeMoney}₽ (правая)`);
+                    winnersList.push(`${idx + 1}️⃣ ${slot.rightName || slot.right.split('|')[0]} → +${prizeMoney}₽ (правая, не найден)`);
                     total += prizeMoney;
                 }
             }
         }
     }
 
-    // Добавляем список победителей в сообщение
     if (winnersList.length > 0) {
         msg += winnersList.join('\n');
     } else {
