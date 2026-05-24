@@ -772,9 +772,6 @@ const playerExists = getPlayerKey(sender, db) !== null;
     // ===== ПРОВЕРКА РЕГИСТРАЦИИ =====
 
     // ДИАГНОСТИКА
-    if (cmd === '7' || cmd === '6') {
-        console.log(`🔍 ДИАГНОСТИКА: cmd=${cmd}, game.active=${game.active}, game.paused=${game.paused}, game.max=${game.max}, game.style=${game.style}`);
-    }
     
     if (!playerExists && cmd.startsWith('/') && cmd !== '/регистрация') {
         await sendMessage(chatId, `❌ *ДОСТУП ЗАПРЕЩЁН* ❌
@@ -877,6 +874,7 @@ const playerKey = getPlayerKey(sender, db);
         await sendMessage(chatId, out);
         return;
     }
+    
 if (cmd === '/гадание') {
     const signs = [
         '♈ Овен', '♉ Телец', '♊ Близнецы', '♋ Рак',
@@ -894,6 +892,11 @@ if (cmd === '/гадание') {
     await sendMessage(chatId, `🔮 *ГАДАНИЕ* 🔮\n━━━━━━━━━━━━━━━━━━\n${randomSign}: ${num1}, ${num2}, ${num3}`);
     return;
 }
+
+    if (cmd === '7' || cmd === '6') {
+        console.log(`🔍 ДИАГНОСТИКА: cmd=${cmd}, game.active=${game.active}, game.paused=${game.paused}, game.max=${game.max}, game.style=${game.style}`);
+    }
+    
     if (cmd === '/новости') {
         await sendMessage(chatId, `📰 *НОВОСТЬ*\n━━━━━━━━━━━━━━━━━━\n${facts[Math.floor(Math.random() * facts.length)]}`);
         return;
