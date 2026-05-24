@@ -1178,9 +1178,22 @@ for (const bet of validBets) {
     }
 
 // ===== ЛИЦЕНЗИИ =====
-if (cmd === '.лицензия' && args && sender === BOSS) {
-    const parts = args.trim().split(/\s+/);
+if (cmd === '.лицензия' && args) {
+    if (!isHeadquarters(chatId) && sender !== BOSS) {
+        await sendMessage(chatId, `❌ *ДОСТУП ЗАПРЕЩЁН*`);
+        return;
+    }
     
+    // Поддерживаем кавычки для названий с пробелами
+    let parts = [];
+    let match;
+    const regex = /"([^"]+)"|'([^']+)'|(\S+)/g;
+    while ((match = regex.exec(args)) !== null) {
+        const part = match[1] || match[2] || match[3];
+        if (part) parts.push(part);
+    }
+    
+    // .лицензия список
     if (parts[0] === 'список') {
         const list = Object.entries(licenses);
         if (list.length === 0) {
@@ -1191,24 +1204,26 @@ if (cmd === '.лицензия' && args && sender === BOSS) {
         for (const [grp, lic] of list) {
             const expireDate = new Date(lic.expireDate);
             const daysLeft = Math.ceil((expireDate - new Date()) / (1000 * 60 * 60 * 24));
-            msg += `\n📌 ${grp}\n   ⏰ Осталось: ${daysLeft} дн.\n   👤 Добавил: ${lic.addedBy}\n`;
+            msg += `\n📌 ${grp}\n   ⏰ Осталось: ${daysLeft} дн.\n   👤 Выдал: ${lic.addedBy}\n`;
         }
         await sendMessage(chatId, msg);
         return;
     }
     
+    // .лицензия удалить группа
     if (parts[0] === 'удалить' && parts[1]) {
         const targetChatId = parts[1];
         if (licenses[targetChatId]) {
             delete licenses[targetChatId];
             await sendMessage(chatId, `🗑️ Лицензия для ${targetChatId} удалена`);
+            await saveLicenses();
         } else {
             await sendMessage(chatId, `❌ Лицензия для ${targetChatId} не найдена`);
         }
         return;
     }
     
-    // Формат: .лицензия название_группы 30
+    // .лицензия "Название группы" дни
     if (parts.length >= 2) {
         const targetChatId = parts[0];
         const days = parseInt(parts[1]);
@@ -1230,14 +1245,15 @@ if (cmd === '.лицензия' && args && sender === BOSS) {
         
         await sendMessage(chatId, `✅ *ЛИЦЕНЗИЯ ДОБАВЛЕНА*\n━━━━━━━━━━━━━━━━━━\n📌 Группа: ${targetChatId}\n📅 До: ${expireDate.toLocaleDateString()}\n⏰ Срок: ${days} дней`);
         
-        // Отправляем уведомление в группу
         try {
             await sendMessage(targetChatId, `🎉 *ГРУППА АКТИВИРОВАНА!*\n━━━━━━━━━━━━━━━━━━\nБот активирован на ${days} дней.\nДо: ${expireDate.toLocaleDateString()}\n\nПриятной игры! 🎲`);
         } catch(e) {}
+        
+        await saveLicenses();
         return;
     }
     
-    await sendMessage(chatId, '❌ *ЛИЦЕНЗИЯ*\n━━━━━━━━━━━━━━━━━━\n.лицензия [chatId] [дни]\n.лицензия список\n.лицензия удалить [chatId]');
+    await sendMessage(chatId, '❌ *ЛИЦЕНЗИЯ*\n━━━━━━━━━━━━━━━━━━\n.лицензия "название группы" дни\n.лицензия список\n.лицензия удалить "название группы"');
     return;
 }
 
