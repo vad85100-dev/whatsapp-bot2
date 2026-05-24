@@ -387,69 +387,67 @@ function renderLot() {
     const p = s.price;
     const repeatText = game.repeat ? ' 🔁 *ЛОТ С ПОВТОРОМ* 🔁' : '';
     
-    // Берём красивое оформление из стиля
-    let res = s.h;
+    const prizes = s.prizes || [
+        { place: 1, prize: 1000 },
+        { place: 2, prize: 5000 },
+        { place: 3, prize: 1000 },
+        { place: 4, prize: 2500 }
+    ];
+
+    // ШАПКА С ЦЕНОЙ И ПРИЗАМИ (КАК РАНЬШЕ, НО КРАСИВО)
+    let res = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    res += `💰 *ЦЕНА: ${p.full}₽ / ${p.half}₽* 💰${repeatText}\n`;
+    res += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    res += `🏆 *ПРИЗЫ* 🏆\n`;
+    for (let i = 0; i < prizes.length; i++) {
+        if (prizes[i].prize > 0) {
+            res += `${prizes[i].place} место: ${prizes[i].prize}₽\n`;
+        }
+    }
+    res += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
     
-    // Подставляем цены
-    res = res.replace(/\{price_full\}/g, p.full);
-    res = res.replace(/\{price_half\}/g, p.half);
-    
-    // Подставляем имена игроков в номера (для блоков)
+    // НОМЕРКИ С ИГРОКАМИ (КАК РАНЬШЕ)
     for (let i = 1; i <= game.max; i++) {
         const slot = game.slots[i];
-        let playerName = s.i + ' 🟢';
+        const emoji = emj[i] || i;
         
-        if (slot) {
-            if (slot.full) {
-                const playerKey = getPlayerKey(slot.full);
-                playerName = playerKey ? getDisplayNameNoId(playerKey) : (slot.fullName || slot.full.split('|')[0]);
-            } else {
-                if (slot.left && slot.right) {
-                    const leftName = slot.leftName || slot.left.split('|')[0];
-                    const rightName = slot.rightName || slot.right.split('|')[0];
-                    playerName = `${leftName} / ${rightName}`;
-                } else if (slot.left) {
-                    const leftName = slot.leftName || slot.left.split('|')[0];
-                    playerName = `${leftName} / 🟢`;
-                } else if (slot.right) {
-                    const rightName = slot.rightName || slot.right.split('|')[0];
-                    playerName = `🟢 / ${rightName}`;
-                }
+        if (!slot) {
+            res += `${emoji} 🟢\n`;
+        } else if (slot.full) {
+            const playerKey = getPlayerKey(slot.full);
+            const displayName = playerKey ? getDisplayNameNoId(playerKey) : (slot.fullName || slot.full.split('|')[0]);
+            res += `${emoji} ${displayName}\n`;
+        } else {
+            const leftName = slot.left ? (getPlayerKey(slot.left) ? getDisplayNameNoId(getPlayerKey(slot.left)) : (slot.leftName || slot.left.split('|')[0])) : null;
+            const rightName = slot.right ? (getPlayerKey(slot.right) ? getDisplayNameNoId(getPlayerKey(slot.right)) : (slot.rightName || slot.right.split('|')[0])) : null;
+            
+            if (leftName && rightName) {
+                res += `${emoji} ${leftName} / ${rightName}\n`;
+            } else if (leftName) {
+                res += `${emoji} ${leftName} /\n`;
+            } else if (rightName) {
+                res += `${emoji} / ${rightName}\n`;
             }
         }
-        
-        const pattern = new RegExp(`\\{${i}\\}`, 'g');
-        res = res.replace(pattern, playerName);
     }
     
-    // ДОБАВЛЯЕМ НОМЕРА ВНИЗУ СТРОКОЙ (БЕЗ БЛОКОВ, ПРОСТО СПИСОК)
-    let numbersLine = '\n\n✩⢄⢁✧ ----- НОМЕРА ----- ✧⡈⡠✩\n';
+    // НОМЕРА ВНИЗУ (ПРОСТО ЦИФРЫ)
+    res += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+    res += `📌 *НОМЕРА:* `;
     for (let i = 1; i <= game.max; i++) {
-        const slot = game.slots[i];
-        let isFree = true;
-        if (slot && slot.full) isFree = false;
-        if (slot && (slot.left || slot.right)) isFree = false;
-        
-        if (isFree) {
-            numbersLine += `${emj[i] || i} 🟢 `;
-        } else {
-            numbersLine += `${emj[i] || i} 🔴 `;
-        }
+        res += `${emj[i] || i} `;
     }
+    res += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
     
-    res += numbersLine;
-    
-    // Если лот на паузе — добавляем информацию
     if (game.paused) {
         res += `\n\n⏸️ *ЛОТ НА ПАУЗЕ* ⏸️`;
         if (game.startedBy && lotInfo[game.startedBy]) {
-            res += `\n━━━━━━━━━━━━━━━━━━\n📋 *ИНФОРМАЦИЯ ОТ ВЕДУЩЕГО:*\n${lotInfo[game.startedBy]}`;
+            res += `\n📋 *ИНФО ВЕДУЩЕГО:*\n${lotInfo[game.startedBy]}`;
         }
     }
     
     return res;
 }
-
 async function payout(chatId, winners, adminName) {
     const s = styles[game.style];
     
