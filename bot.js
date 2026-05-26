@@ -465,18 +465,26 @@ function breakPiggy(chatId) {
         msg += `\n${getDisplayName(p.key)} — ${winnings}₽ (${p.tickets} меш.)`;
     }
     
-// Сохраняем в историю
-piggyHistory.push({
-    date: new Date().toISOString(),
-    amount: piggyBank,
-    participants: participants.map(p => ({
-        name: getDisplayName(p.key),
-        tickets: p.tickets,
-        winnings: Math.floor((piggyBank / totalTickets) * p.tickets)
-    }))
-});
+    // Сохраняем в историю
+    piggyHistory.push({
+        date: new Date().toISOString(),
+        amount: piggyBank,
+        participants: participants.map(p => ({
+            name: getDisplayName(p.key),
+            tickets: p.tickets,
+            winnings: Math.floor((piggyBank / totalTickets) * p.tickets)
+        }))
+    });
     
     piggyBank = 0;
+    
+    // ← ДОБАВЛЯЕМ СОХРАНЕНИЕ В ГРУППУ!
+    const group = getGroupData(chatId);
+    group.piggyBank = piggyBank;
+    group.db = db;
+    group.piggyHistory = piggyHistory;
+    groups[chatId] = group;
+    
     msg += `\n\n━━━━━━━━━━━━━━━━━━\n🎉 ПОЗДРАВЛЯЕМ! 🎉`;
     sendMessage(chatId, msg);
 }
@@ -1417,7 +1425,7 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
         return;
     }
 
-    // ===== КОПИЛКА (изменение) =====
+       // ===== КОПИЛКА (изменение) =====
     if (cmd === '.копилка' && args && isAdminUser) {
         const parts = args.split(/\s+/);
         const op = parts[0];
@@ -1445,6 +1453,11 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
         
         const oldPiggy = piggyBank;
         piggyBank = newPiggy;
+        
+        // ← ДОБАВЛЯЕМ СОХРАНЕНИЕ В ГРУППУ!
+        group.piggyBank = piggyBank;
+        groups[chatId] = group;
+        
         await sendMessage(chatId, `🐷 *КОПИЛКА ИЗМЕНЕНА*\n━━━━━━━━━━━━━━━━━━\n📉 Было: ${oldPiggy}₽\n📈 Стало: ${piggyBank}₽`);
         return;
     }
