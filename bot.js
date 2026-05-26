@@ -135,16 +135,16 @@ const styles = {
         i: '🦥',
         price: { full: 1000, half: 500 },
         maxNumbers: 12,
-        prizesCount: 4,
-        prizes: [{ place: 1, prize: 1000 }, { place: 2, prize: 5000 }, { place: 3, prize: 1000 }, { place: 4, prize: 2500 }]
+        prizesCount: 6,
+        prizes: [{ place: 1, prize: 1200 }, { place: 2, prize: 800 }, { place: 3, prize: 1000 }, { place: 4, prize: 3000 }, {place: 5, prize: 1000},{place: 6, prize: 500}]
     },
     рыжий: {
         h: '🦊🔥🦊🔥🦊🔥🦊🔥🦊🔥\n✩⢄⢁✧ --------- ✧⡈⡠✩\n🔥🔥 *{price_full}₽➖{price_half}₽* 🔥🔥\n✩⢄⢁✧ --------- ✧⡈⡠✩\n🍂1️⃣🍂 1️⃣2️⃣0️⃣0️⃣ 🍂 {1}\n🦊2️⃣🦊 8️⃣0️⃣0️⃣ 🦊 {2}\n🌾3️⃣🌾 1️⃣0️⃣0️⃣0️⃣ 🌾 {3}\n🍁4️⃣🍁 3️⃣0️⃣0️⃣0️⃣ 🍁 {4}\n🪵5️⃣🪵 1️⃣0️⃣0️⃣0️⃣ 🪵 {5}\n🦊6️⃣🦊 5️⃣0️⃣0️⃣ 🦊 {6}',
         i: '🦊',
         price: { full: 1000, half: 500 },
         maxNumbers: 9,
-        prizesCount: 4,
-        prizes: [{ place: 1, prize: 2000 }, { place: 2, prize: 3000 }, { place: 3, prize: 500 }, { place: 4, prize: 1000 }]
+        prizesCount: 6,
+        prizes: [{ place: 1, prize: 1200 }, { place: 2, prize: 800 }, { place: 3, prize: 1000 }, { place: 4, prize: 3000 }, {place 5, prize: 1000},{place 6, prize: 500}]
     },
     клубничка: {
         h: '🍓✨🍓✨🍓✨🍓✨🍓✨\n✩⢄⢁✧ --------- ✧⡈⡠✩\n🍓🍓 *{price_full}₽➖{price_half}₽* 🍓🍓\n✩⢄⢁✧ --------- ✧⡈⡠✩\n🍓1️⃣🍓 6️⃣0️⃣0️⃣0️⃣ 🍓 {1}\n🍓2️⃣🍓 4️⃣5️⃣0️⃣0️⃣ 🍓 {2}\n🍓3️⃣🍓 3️⃣5️⃣0️⃣0️⃣ 🍓 {3}\n🍓4️⃣🍓 3️⃣5️⃣0️⃣0️⃣ 🍓 {4}\n🍓5️⃣🍓 4️⃣0️⃣0️⃣0️⃣ 🍓 {5}',
