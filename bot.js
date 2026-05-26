@@ -550,23 +550,29 @@ function renderLot(gameData, groupLotInfo, dbData) {
 async function payout(chatId, winners, adminName, groupGame, groupDb, groupStats, groupPiggyBank) {
     const s = styles[groupGame.style];
     
-    const prizes = s.prizes || [
-        { place: 1, prize: 1000 },
-        { place: 2, prize: 5000 },
-        { place: 3, prize: 1000 },
-        { place: 4, prize: 2500 }
-    ];
+    // БЕРЁМ ПРИЗЫ ТОЛЬКО ИЗ СТИЛЯ! БЕЗ ДЕФОЛТНЫХ!
+    const prizes = s.prizes;
+
+    if (!prizes || prizes.length === 0) {
+        await sendMessage(chatId, `❌ *ОШИБКА*: В стиле "${groupGame.style}" не указаны призы!`);
+        return { groupGame, groupDb, groupStats, groupPiggyBank };
+    }
 
     let msg = `🏆 *ВЫПЛАТА ПОБЕДИТЕЛЯМ* 🏆\n━━━━━━━━━━━━━━━━━━\n`;
     let total = 0;
     let winnersList = [];
 
-    for (let idx = 0; idx < Math.min(winners.length, prizes.length); idx++) {
+    for (let idx = 0; idx < winners.length; idx++) {
         const num = winners[idx];
         const slot = groupGame.slots[num];
         if (!slot) continue;
 
-        let prizeMoney = prizes[idx].prize;
+        // ПРИЗ ДЛЯ ЭТОГО МЕСТА (ЕСЛИ ЕСТЬ)
+        let prizeMoney = 0;
+        if (idx < prizes.length) {
+            prizeMoney = prizes[idx].prize;
+        }
+        
         if (prizeMoney === 0) continue;
 
         if (!slot.full && (slot.left || slot.right)) {
@@ -584,7 +590,7 @@ async function payout(chatId, winners, adminName, groupGame, groupDb, groupStats
             
             if (!playerKey) {
                 const playerName = slot.fullName || slot.full.split('|')[0];
-               playerKey = getPlayerKey(playerName, groupDb);
+                playerKey = getPlayerKey(playerName, groupDb);
             }
             
             if (playerKey) {
@@ -607,7 +613,7 @@ async function payout(chatId, winners, adminName, groupGame, groupDb, groupStats
                 }
                 if (!playerKey) {
                     const playerName = slot.leftName || slot.left.split('|')[0];
-                playerKey = getPlayerKey(playerName, groupDb);
+                    playerKey = getPlayerKey(playerName, groupDb);
                 }
                 
                 if (playerKey) {
@@ -630,7 +636,7 @@ async function payout(chatId, winners, adminName, groupGame, groupDb, groupStats
                 }
                 if (!playerKey) {
                     const playerName = slot.rightName || slot.right.split('|')[0];
-                   playerKey = getPlayerKey(playerName, groupDb);
+                    playerKey = getPlayerKey(playerName, groupDb);
                 }
                 
                 if (playerKey) {
