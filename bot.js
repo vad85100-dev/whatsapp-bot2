@@ -566,7 +566,7 @@ async function payout(chatId, winners, adminName, groupGame, groupDb, groupStats
             
             if (!playerKey) {
                 const playerName = slot.fullName || slot.full.split('|')[0];
-                playerKey = getPlayerKeyWithDb(playerName, groupDb);
+               playerKey = getPlayerKey(playerName, groupDb);
             }
             
             if (playerKey) {
@@ -612,7 +612,7 @@ async function payout(chatId, winners, adminName, groupGame, groupDb, groupStats
                 }
                 if (!playerKey) {
                     const playerName = slot.rightName || slot.right.split('|')[0];
-                    playerKey = getPlayerKeyWithDb(playerName, groupDb);
+                   playerKey = getPlayerKey(playerName, groupDb);
                 }
                 
                 if (playerKey) {
@@ -933,16 +933,14 @@ if (cmd === '/гадание') {
         return;
     }
 
-      // ===== СТАВКИ =====
+        // ===== СТАВКИ =====
     if (cmd && /^[\d,\/\\]+$/.test(cmd) && !cmd.startsWith('.') && !cmd.startsWith('/')) {
-        // Проверяем, активен ли лот
         if (!game.active) {
-            await sendMessage(chatId, `❌ *ЛОТ НЕ АКТИВЕН*\n━━━━━━━━━━━━━━━━━━\nСначала запустите лот командой:\n.начать [название_стиля]`);
+            await sendMessage(chatId, `❌ *ЛОТ НЕ АКТИВЕН*`);
             return;
         }
-        
         if (game.paused) {
-            await sendMessage(chatId, `❌ *ЛОТ НА ПАУЗЕ*\n━━━━━━━━━━━━━━━━━━\nДождитесь продолжения или завершения лота.`);
+            await sendMessage(chatId, `❌ *ЛОТ НА ПАУЗЕ*`);
             return;
         }
         
@@ -975,17 +973,21 @@ if (cmd === '/гадание') {
             }
             const need = type === 'full' ? p.full : p.half;
             const slot = game.slots[num] || {};
-            if (type === 'full' && (slot.full || slot.left || slot.right)) {
-                errors.push(`❌ Номер ${num} уже занят`);
-                continue;
-            }
-            if (type === 'half' && slot.full) {
-                errors.push(`❌ Номер ${num} уже занят целиком`);
-                continue;
-            }
-            if (type === 'half' && slot.left && slot.right) {
-                errors.push(`❌ Номер ${num} полностью занят`);
-                continue;
+            
+            if (type === 'full') {
+                if (slot.full || slot.left || slot.right) {
+                    errors.push(`❌ Номер ${num} уже занят`);
+                    continue;
+                }
+            } else if (type === 'half') {
+                if (slot.full) {
+                    errors.push(`❌ Номер ${num} уже занят целиком`);
+                    continue;
+                }
+                if (slot.left && slot.right) {
+                    errors.push(`❌ Номер ${num} полностью занят`);
+                    continue;
+                }
             }
             validBets.push({ num, type, need });
             totalCost += need;
@@ -998,7 +1000,6 @@ if (cmd === '/гадание') {
 
         db[playerKey].balance = (db[playerKey].balance || 0) - totalCost;
 
-        // Получаем ID игрока для привязки
         const playerId = db[playerKey]?.id || null;
         const playerIdentifier = playerId ? `${sender}|id:${playerId}` : sender;
 
@@ -1021,7 +1022,6 @@ if (cmd === '/гадание') {
             }
         }
 
-        // НАЧИСЛЕНИЕ ИГР ЗА СТАВКИ
         for (const bet of validBets) {
             if (bet.type === 'full') {
                 addGamePlay(playerKey, 1, db);
@@ -1049,7 +1049,6 @@ if (cmd === '/гадание') {
             game.paused = true;
         }
 
-        // Сохраняем изменения в группе
         group.db = db;
         group.game = game;
         group.stats = stats;
