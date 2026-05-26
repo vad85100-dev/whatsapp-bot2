@@ -550,8 +550,6 @@ function renderLot(gameData, groupLotInfo, dbData) {
 }
 async function payout(chatId, winners, adminName, groupGame, groupDb, groupStats, groupPiggyBank) {
     const s = styles[groupGame.style];
-    
-    // БЕРЁМ ПРИЗЫ ТОЛЬКО ИЗ СТИЛЯ
     const prizes = s.prizes;
 
     if (!prizes || prizes.length === 0) {
@@ -568,77 +566,29 @@ async function payout(chatId, winners, adminName, groupGame, groupDb, groupStats
         const slot = groupGame.slots[num];
         if (!slot) continue;
 
-        // ПРИЗ ДЛЯ ЭТОГО МЕСТА
         let prizeMoney = 0;
         if (idx < prizes.length) {
             prizeMoney = prizes[idx].prize;
         }
-        
         if (prizeMoney === 0) continue;
 
-        // ОБРАБАТЫВАЕМ СНАЧАЛА ЛЕВУЮ, ПОТОМ ПРАВУЮ, ПОТОМ ПОЛНУЮ
-        // (НО ЕСЛИ ЕСТЬ FULL, ТО ПОЛОВИНОК БЫТЬ НЕ ДОЛЖНО — ЭТО НОРМАЛЬНО)
+        // Проверяем, один ли игрок на обеих половинках
+        let leftPlayerKey = null;
+        let rightPlayerKey = null;
 
-        // Левая половинка
         if (slot.left) {
-            let prizeHalf = prizeMoney;
-            if (!slot.full && !slot.right) {
-                // Если только левая — забирает весь приз
-                prizeHalf = prizeMoney;
-            } else if (slot.right && !slot.full) {
-                // Если есть правая — делим пополам
-                prizeHalf = Math.floor(prizeMoney / 2);
+            const leftIdMatch = slot.left.match(/id:(\d+)/);
+            if (leftIdMatch) {
+                const leftId = parseInt(leftIdMatch[1]);
+                leftPlayerKey = Object.keys(groupDb).find(key => groupDb[key]?.id === leftId);
             }
-            
-            let playerKey = null;
-            const idMatch = slot.left.match(/id:(\d+)/);
-            if (idMatch) {
-                const playerId = parseInt(idMatch[1]);
-                playerKey = Object.keys(groupDb).find(key => groupDb[key]?.id === playerId);
-            }
-            if (!playerKey) {
-                const playerName = slot.leftName || slot.left.split('|')[0];
-                playerKey = getPlayerKey(playerName, groupDb);
-            }
-            
-            if (playerKey) {
-                groupDb[playerKey].balance = (groupDb[playerKey].balance || 0) + prizeHalf;
-                winnersList.push(`${idx + 1}️⃣ ${getDisplayNameNoId(playerKey)} → +${prizeHalf}₽ (левая пол.)`);
-                total += prizeHalf;
-                if (!groupDb[playerKey].wins) groupDb[playerKey].wins = 0;
-                groupDb[playerKey].wins++;
-            } else {
-                winnersList.push(`${idx + 1}️⃣ ${slot.leftName || slot.left.split('|')[0]} → +${prizeHalf}₽ (левая, не найден)`);
-                total += prizeHalf;
+            if (!leftPlayerKey) {
+                const leftName = slot.leftName || slot.left.split('|')[0];
+                leftPlayerKey = getPlayerKey(leftName, groupDb);
             }
         }
 
-        // Правая половинка (только если есть и не совпадает с левой)
         if (slot.right) {
-            let prizeHalf = prizeMoney;
-            if (!slot.full && !slot.left) {
-                // Если только правая — забирает весь приз
-                prizeHalf = prizeMoney;
-            } else if (slot.left && !slot.full) {
-                // Если есть левая — делим пополам
-                prizeHalf = Math.floor(prizeMoney / 2);
-            }
-            
-            // НЕ ДАЁМ ОДНОМУ И ТОМУ ЖЕ ИГРОКУ ПОЛУЧИТЬ ДВАЖДЫ, ЕСЛИ ОН ЗАНЯЛ ОБЕ ПОЛОВИНКИ
-            let leftPlayerKey = null;
-            if (slot.left) {
-                const leftIdMatch = slot.left.match(/id:(\d+)/);
-                if (leftIdMatch) {
-                    const leftId = parseInt(leftIdMatch[1]);
-                    leftPlayerKey = Object.keys(groupDb).find(key => groupDb[key]?.id === leftId);
-                }
-                if (!leftPlayerKey) {
-                    const leftName = slot.leftName || slot.left.split('|')[0];
-                    leftPlayerKey = getPlayerKey(leftName, groupDb);
-                }
-            }
-            
-            let rightPlayerKey = null;
             const rightIdMatch = slot.right.match(/id:(\d+)/);
             if (rightIdMatch) {
                 const rightId = parseInt(rightIdMatch[1]);
@@ -648,25 +598,48 @@ async function payout(chatId, winners, adminName, groupGame, groupDb, groupStats
                 const rightName = slot.rightName || slot.right.split('|')[0];
                 rightPlayerKey = getPlayerKey(rightName, groupDb);
             }
-            
-            // Если левый и правый — один и тот же игрок, пропускаем правый (уже начислили)
-            if (leftPlayerKey === rightPlayerKey && leftPlayerKey !== null) {
-                continue;
-            }
-            
-            if (rightPlayerKey) {
-                groupDb[rightPlayerKey].balance = (groupDb[rightPlayerKey].balance || 0) + prizeHalf;
-                winnersList.push(`${idx + 1}️⃣ ${getDisplayNameNoId(rightPlayerKey)} → +${prizeHalf}₽ (правая пол.)`);
-                total += prizeHalf;
-                if (!groupDb[rightPlayerKey].wins) groupDb[rightPlayerKey].wins = 0;
-                groupDb[rightPlayerKey].wins++;
-            } else {
-                winnersList.push(`${idx + 1}️⃣ ${slot.rightName || slot.right.split('|')[0]} → +${prizeHalf}₽ (правая, не найден)`);
-                total += prizeHalf;
-            }
         }
 
-        // Полная ставка (только если нет половинок)
+        // СЛУЧАЙ 1: Один и тот же игрок на левой и правой
+        if (leftPlayerKey && rightPlayerKey && leftPlayerKey === rightPlayerKey) {
+            // Даём полный приз
+            const playerKey = leftPlayerKey;
+            groupDb[playerKey].balance = (groupDb[playerKey].balance || 0) + prizeMoney;
+            winnersList.push(`${idx + 1}️⃣ ${getDisplayNameNoId(playerKey)} → +${prizeMoney}₽ (обе половинки → полный приз)`);
+            total += prizeMoney;
+            if (!groupDb[playerKey].wins) groupDb[playerKey].wins = 0;
+            groupDb[playerKey].wins++;
+            continue;
+        }
+
+        // СЛУЧАЙ 2: Левая половинка (отдельно)
+        if (slot.left && leftPlayerKey) {
+            let prizeLeft = prizeMoney;
+            // Если есть правая и это другой игрок — делим пополам
+            if (slot.right && rightPlayerKey && leftPlayerKey !== rightPlayerKey) {
+                prizeLeft = Math.floor(prizeMoney / 2);
+            }
+            groupDb[leftPlayerKey].balance = (groupDb[leftPlayerKey].balance || 0) + prizeLeft;
+            winnersList.push(`${idx + 1}️⃣ ${getDisplayNameNoId(leftPlayerKey)} → +${prizeLeft}₽ (левая пол.)`);
+            total += prizeLeft;
+            if (!groupDb[leftPlayerKey].wins) groupDb[leftPlayerKey].wins = 0;
+            groupDb[leftPlayerKey].wins++;
+        }
+
+        // СЛУЧАЙ 3: Правая половинка (отдельно, если не тот же игрок)
+        if (slot.right && rightPlayerKey && (!leftPlayerKey || leftPlayerKey !== rightPlayerKey)) {
+            let prizeRight = prizeMoney;
+            if (slot.left && leftPlayerKey && leftPlayerKey !== rightPlayerKey) {
+                prizeRight = Math.floor(prizeMoney / 2);
+            }
+            groupDb[rightPlayerKey].balance = (groupDb[rightPlayerKey].balance || 0) + prizeRight;
+            winnersList.push(`${idx + 1}️⃣ ${getDisplayNameNoId(rightPlayerKey)} → +${prizeRight}₽ (правая пол.)`);
+            total += prizeRight;
+            if (!groupDb[rightPlayerKey].wins) groupDb[rightPlayerKey].wins = 0;
+            groupDb[rightPlayerKey].wins++;
+        }
+
+        // СЛУЧАЙ 4: Полная ставка (если нет половинок)
         if (slot.full && !slot.left && !slot.right) {
             let playerKey = null;
             const idMatch = slot.full.match(/id:(\d+)/);
@@ -686,7 +659,7 @@ async function payout(chatId, winners, adminName, groupGame, groupDb, groupStats
                 if (!groupDb[playerKey].wins) groupDb[playerKey].wins = 0;
                 groupDb[playerKey].wins++;
             } else {
-                winnersList.push(`${idx + 1}️⃣ ${slot.fullName || slot.full.split('|')[0]} → +${prizeMoney}₽ (не найден в базе)`);
+                winnersList.push(`${idx + 1}️⃣ ${slot.fullName || slot.full.split('|')[0]} → +${prizeMoney}₽ (не найден)`);
                 total += prizeMoney;
             }
         }
