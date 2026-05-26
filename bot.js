@@ -241,13 +241,14 @@ const styles = {
     maxNumbers: 11,
     prizesCount: 17,
     prizes: [
-        { place: 1, prize: 500 }, { place: 2, prize: 500 }, { place: 3, prize: 500 }, { place: 4, prize: 500 },
-        { place: 5, prize: 500 }, { place: 6, prize: 500 }, { place: 7, prize: 500 }, { place: 8, prize: 500 },
-        { place: 9, prize: 500 }, { place: 10, prize: 500 }, { place: 11, prize: 500 }, { place: 12, prize: 500 },
-        { place: 13, prize: 500 }, { place: 14, prize: 500 }, { place: 15, prize: 500 }, { place: 16, prize: 500 },
-        { place: 17, prize: 500 }
+        { place: 1, prize: 500 }, { place: 2, prize: 500 }, { place: 3, prize: 500 },
+        { place: 4, prize: 500 }, { place: 5, prize: 500 }, { place: 6, prize: 500 },
+        { place: 7, prize: 500 }, { place: 8, prize: 500 }, { place: 9, prize: 500 },
+        { place: 10, prize: 500 }, { place: 11, prize: 500 }, { place: 12, prize: 500 },
+        { place: 13, prize: 500 }, { place: 14, prize: 500 }, { place: 15, prize: 500 },
+        { place: 16, prize: 500 }, { place: 17, prize: 500 }
     ]
-},
+},,
     десяточка: {
         h: '🔟💎🔟💎🔟💎🔟💎🔟💎\n✩⢄⢁✧ --------- ✧⡈⡠✩\n🔟🔟 *{price_full}₽➖{price_half}₽* 🔟🔟\n✩⢄⢁✧ --------- ✧⡈⡠✩\n🔟1️⃣🔟 1️⃣0️⃣0️⃣0️⃣0️⃣ 💎 {1}\n🔟2️⃣🔟 1️⃣0️⃣0️⃣0️⃣0️⃣ 💎 {2}\n🔟3️⃣🔟 1️⃣0️⃣0️⃣0️⃣0️⃣ 💎 {3}\n🔟4️⃣🔟 8️⃣0️⃣0️⃣0️⃣ 💎 {4}\n🔟5️⃣🔟 3️⃣5️⃣0️⃣0️⃣ 💎 {5}',
         i: '🔟',
