@@ -35,6 +35,27 @@ function getGroupData(chatId) {
     return groups[chatId];
 }
 
+
+async function clearWebhooksQueue() {
+    try {
+        const response = await axios.delete(`https://api.green-api.com/waInstance${ID_INSTANCE}/clearWebhooksQueue/${API_TOKEN}`);
+        if (response.data.isCleared) {
+            console.log('✅ Очередь вебхуков очищена');
+        } else {
+            console.log('⚠️ Не удалось очистить очередь:', response.data.reason);
+            if (response.data.leftTime) {
+                console.log(`⏳ Повторите через ${response.data.leftTime} секунд`);
+            }
+        }
+        return response.data;
+    } catch (err) {
+        console.error('❌ Ошибка очистки очереди:', err.message);
+    }
+}
+
+// Вызови при старте бота
+clearWebhooksQueue();
+
 // Функция проверки лицензии
 function hasLicense(chatId, groupName) {
     // Ищем по ID группы или по названию (в нижнем регистре)
