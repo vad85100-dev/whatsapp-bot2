@@ -375,13 +375,21 @@ const facts = ['🎲 Сегодня чаще выпадают нечётные',
 
 async function sendMessage(chatId, text) {
     try {
-        await axios.post(`https://api.green-api.com/waInstance${ID_INSTANCE}/sendMessage/${API_TOKEN}`, {
+        const url = `https://api.green-api.com/waInstance${ID_INSTANCE}/sendMessage/${API_TOKEN}`;
+        console.log('Отправка по URL:', url);
+        
+        const response = await axios.post(url, {
             chatId: chatId,
             message: text
         });
-        console.log(`✅ Отправлено`);
+        
+        console.log('✅ Отправлено, ID:', response.data.idMessage);
     } catch (err) {
         console.error('❌ Ошибка отправки:', err.message);
+        if (err.response) {
+            console.error('Статус:', err.response.status);
+            console.error('Данные ошибки:', err.response.data);
+        }
     }
 }
 
