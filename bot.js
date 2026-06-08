@@ -797,11 +797,12 @@ async function handleMessage(chatId, sender, text, groupName) {
     // ДИАГНОСТИКА
 
     // Проверка лицензии
+       // Проверка лицензии — без сообщения
     const isLicensed = hasLicense(chatId, groupName);
     const isBossHere = sender === BOSS;
 
     if (!isLicensed && !isBossHere && !ALLOWED_GROUPS.includes(groupName)) {
-        await sendMessage(chatId, `❌ *ГРУППА НЕ АКТИВИРОВАНА*\n━━━━━━━━━━━━━━━━━━\nДля использования бота необходима лицензия.\n\n💰 Стоимость: от 6.000₽/месяц\n📞 Для активации обратитесь к @${BOSS}`);
+        // Просто игнорируем команду, ничего не отправляем
         return;
     }
     
