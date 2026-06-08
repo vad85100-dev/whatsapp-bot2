@@ -1,8 +1,10 @@
 const express = require('express');
 const axios = require('axios');
+const fs = require('fs');
+require('dotenv').config();
 
 const app = express();
-app.use(express.json());
+app.use(express.json());   // <-- это обязательно для чтения JSON из вебхуков
 
 const ID_INSTANCE = process.env.ID_INSTANCE;
 const API_TOKEN = process.env.API_TOKEN;
