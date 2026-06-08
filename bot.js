@@ -6,8 +6,8 @@ require('dotenv').config();
 const app = express();
 app.use(express.json());   // <-- это обязательно для чтения JSON из вебхуков
 
-const ID_INSTANCE = '1105622014';
-const API_TOKEN = '769734a0a2874b04a8d871dc50ad46632aa6846d275e41b2a0';
+const ID_INSTANCE = process.env.ID_INSTANCE;
+const API_TOKEN = process.env.API_TOKEN;
 const BOSS = 'P14';
 const ADMINS = ['A', 'Фаягуль', 'Галина', 'Гузель 🧿', 'Галина Дубль', 'Евгения'];
 
