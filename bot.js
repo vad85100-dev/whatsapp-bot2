@@ -1835,6 +1835,19 @@ if (cmd === '.моя_лицензия' && isAdminUser) {
         return;
     }
 }
+
+// Автоочистка при запуске
+async function autoClear() {
+    const count = await getWebhooksQueueCount();
+    if (count > 50) {  // Если больше 50 — чистим
+        console.log('⚠️ Очередь слишком большая, очищаю...');
+        await clearWebhooksQueue();
+    }
+}
+
+// Вызови после main()
+setTimeout(autoClear, 3000);
+
 app.post('/webhook', async (req, res) => {
     const wh = req.body;
     console.log('📩 Вебхук');
