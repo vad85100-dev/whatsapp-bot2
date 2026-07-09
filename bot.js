@@ -100,8 +100,6 @@ function getPlayerKey(nameOrId, dbData) {
     });
 }
 
-const fs = require('fs');
-
 // Загрузка данных групп из файла
 try {
     if (fs.existsSync('groups_backup.json')) {
